@@ -1,0 +1,14 @@
+Metadata-Version: 1.1
+Name: pytorch-colors
+Version: 0.1.0
+Summary: Utility to convert between color spaces for PyTorch Tensors and Variables
+Home-page: https://github.com/jorge-pessoa/pytorch-colors
+Author: Jorge Pessoa
+Author-email: jpessoa.on@gmail.com
+License: UNKNOWN
+Project-URL: Source, https://github.com/jorge-pessoa/pytorch-colors/
+Description: UNKNOWN
+Keywords: pytorch color space conversion tensor variable
+Platform: UNKNOWN
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
