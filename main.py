@@ -1,24 +1,35 @@
 import torch
 import torchvision
-import torchvision.transforms as transforms
+
+import matplotlib.pyplot as plt
 
 from tqdm import tqdm
 import pytorch_colors as colors
 
 from im import *
 from model import *
+from utils import *
 
 
-argscuda = True
-device = torch.device("cuda:0" if argscuda and torch.cuda.is_available() else "cpu")
+cuda = True
+device = torch.device("cuda:0" if cuda and torch.cuda.is_available() else "cpu")
+print(device)
 
-transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0., 0., 0.), (1., 1., 1.))])
+h, w = [64, 64]
 
-trainset = torchvision.datasets.CIFAR10(root="../datasets/cifar10/train", train=True, download=True)#, transform=transform)
-testset = torchvision.datasets.CIFAR10(root="../datasets/cifar10/test", train=False, download=True)#, transform=transform)
+transform = [torchvision.transforms.Resize((h, w)), torchvision.transforms.ToTensor()]
 
-train_tensor = torch.tensor(trainset.data).float().to(device)/255
-test_tensor = torch.tensor(testset.data).float().to(device)/255
+trainset = torchvision.datasets.CIFAR10(root="../datasets/cifar10/train", train=True, download=True, transform=torchvision.transforms.Compose(transform))
+testset = torchvision.datasets.CIFAR10(root="../datasets/cifar10/test", train=False, download=True, transform=torchvision.transforms.Compose(transform))
+
+N = 2000
+bs = 50
+lr = 2e-4
+wd = 0.
+epochs = 100
+
+train_tensor = torch.tensor(trainset.data, dtype=torch.float, device="cpu")[:N].float()/255
+test_tensor = torch.tensor(testset.data, dtype=torch.float, device="cpu")[:N].float()/255
 
 train_tensor = train_tensor.transpose(1, -1)
 train_tensor = train_tensor.transpose(-1, -2)
@@ -27,60 +38,37 @@ test_tensor = test_tensor.transpose(-1, -2)
 
 train_lab = colors.rgb_to_lab(train_tensor)
 test_lab = colors.rgb_to_lab(test_tensor)
-train_lab = normalize_lab(train_lab)
-test_lab = normalize_lab(test_lab)
+train_lab = normalize_lab(train_lab).to(device)
+test_lab = normalize_lab(test_lab).to(device)
 
-train_lab_set = torch.utils.data.TensorDataset(train_lab[:, 0], train_lab[:, 1], train_lab[:, 2])
-test_lab_set = torch.utils.data.TensorDataset(test_lab[:, 0], test_lab[:, 1], test_lab[:, 2])
+train_lab_set = torch.utils.data.TensorDataset(train_lab)
+test_lab_set = torch.utils.data.TensorDataset(test_lab)
 
-trainloader = torch.utils.data.DataLoader(train_lab_set, batch_size=4, shuffle=True, num_workers=1)
-testloader = torch.utils.data.DataLoader(test_lab_set, batch_size=4, shuffle=False, num_workers=1)
+trainloader = torch.utils.data.DataLoader(train_lab_set, batch_size=bs, shuffle=True)
+testloader = torch.utils.data.DataLoader(test_lab_set, batch_size=bs, shuffle=True)
 
 classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
 
-lr = 2e-4
-wd = 0.
-epochs = 2
+model = CONVAE(2, 32, 3, 15).to(device)
+print(count_parameters(model))
+optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=wd)
+bce = torch.nn.BCELoss().to(device)
+mse = torch.nn.MSELoss().to(device)
 
-model = CONVAE().to(device)
-optimizer = torch.optim.Adamax(model.parameters(), lr=lr, weight_decay=wd)
-bce = torch.nn.BCELoss()
+
+def loss_function(x_out, x, lmi=0.5):
+	bs = x.shape[0]
+	ch_a_flat_pred = x_out[:, 0].reshape(bs, -1)
+	ch_b_flat_pred = x_out[:, 1].reshape(bs, -1)
+	loss_a = bce(ch_a_flat_pred, x[:, 0].reshape(bs, -1))
+	loss_b = bce(ch_b_flat_pred, x[:, 1].reshape(bs, -1))
+	#mi_ch_a_b = - mi(ch_a_flat_pred, ch_b_flat_pred, bw=2)
+	return loss_a + loss_b# + lmi*mi_ch_a_b
 
 for epoch in range(epochs):
-	model.train()
-	train_loss = 0
-	for idx, (img_gray, img_a, img_b) in enumerate(trainloader):
-		print(idx)
-		optimizer.zero_grad()
-		output, _ = model(img_gray)
-		loss = bce(output[:, 0], img_a) + bce(output[:, 1], img_b)
-		loss.backward()
-		optimizer.step()
-		train_loss += loss.item()
-		print(train_loss)
-	train_loss /= (idx + 1)
-	"""
-	test_loss = 0
-	model.eval()
-	with torch.no_grad():
-		for idx, (batch, y_true, batch_lengths) in enumerate(tqdm(test_loader)):
-			output, hn = model(batch, batch_lengths)
-			output = output[torch.arange(output.shape[0]), batch_lengths - 1, :]
-			loss = cel(output, y_true)
-			test_loss += loss.item()
-	test_loss /= (idx + 1)
-	tf = time.time()
-	print("Epoch {:03d} | Train loss {:.3f} | Test loss {:.3f} | Time {:.2f} min.".format(epoch, train_loss, test_loss, (tf - ti)/60))
-	if test_loss<best_loss and test_loss>0:
-		print("Saving")
-		torch.save(model.state_dict(), "models/lstm_plasticc.pth")
-		best_loss = test_loss
-		best_epoch = epoch
-		counter = 0
-	else:
-		counter += 1
-	if counter==patience:
-		break
-	else:
-		0
-	"""
+	train_loss = train(model, optimizer, trainloader, loss_function)
+	test_loss = eval(model, testloader, loss_function)
+	print_epoch(epoch, train_loss, test_loss)
+
+plot_images(model, train_lab, 4, "train")
+plot_images(model, test_lab, 4)
