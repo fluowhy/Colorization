@@ -88,3 +88,37 @@ class CONVAE(torch.nn.Module):
         h = self.encode(x).squeeze()
         ab = self.decode(h.reshape(h.shape[0], h.shape[1], 1, 1))
         return ab, h
+
+
+class GMM(torch.nn.Module):
+    def __init__(self, nin, nh, k, ld):
+        """
+
+        Parameters
+        ----------
+        nin : int
+            Input dimensions.
+        nh : int
+            Hidden units.
+        k : int
+            Number of GMM components.
+        ld : int
+            Latent dimensions.
+        """
+        super(GMM, self).__init__()
+        self.fc1 = torch.nn.Linear(nin, nh)
+        self.fcu = torch.nn.Linear(nh, int(ld*k))
+        self.fcs = torch.nn.Linear(nh, int(ld*k))
+        self.fcw = torch.nn.Linear(nh, k)
+        self.relu = torch.nn.ReLU()
+        self.softmax = torch.nn.Softmax(dim=1)
+        self.ld = ld
+        self.k = k
+
+    def forward(self, x):
+        bs = x.shape[0]
+        h1 = self.relu(self.fc1(x))
+        mu = self.fcu(h1)
+        log_s = self.fcs(h1)
+        w = self.softmax(self.fcw(h1))
+        return mu.reshape((bs, self.ld, self.k)), log_s.reshape((bs, self.ld, self.k)), w

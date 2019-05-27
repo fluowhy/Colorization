@@ -128,12 +128,89 @@ def plot_images(model, test_data, n, title="test"):
 	real_images = colors.lab_to_rgb(real_images).numpy()
 	colorized_images = np.transpose(colorized_images, (0, 2, 3, 1))
 	real_images = np.transpose(real_images, (0, 2, 3, 1))
-	fs = 8
+	fs = 5
 	fig, ax = plt.subplots(nrows=n, ncols=2, figsize=(fs, n*fs))
 	for i in range(n):
 		ax[i, 0].imshow(real_images[i])
 		ax[i, 1].imshow(colorized_images[i])
 	ax[0, 0].set_title("real {}".format(title))
 	ax[0, 1].set_title("colorized {}".format(title))
+	plt.tight_layout()
+	plt.savefig("figures/colorized_{}".format(title), dpi=400)
 	plt.show()
 	return
+
+
+class GMMLoss(torch.nn.Module):
+	def __init__(self, ld):
+		super(GMMLoss, self).__init__()
+		self.cte = np.sqrt(2 * np.pi)**ld
+
+	def forward(self, mu, log_s2, w, z):
+		r = (- 0.5 * ((z.unsqueeze(-1) - mu).pow(2) / log_s2.exp()).sum(dim=1)).exp()
+		det = log_s2.exp().prod(dim=1).sqrt() * self.cte
+		pr = (r / det * w).sum(dim=1)
+		return (- torch.log(pr)).mean()
+
+
+def train_gmm(model, optimizer, dataloader, loss_function):
+	"""
+
+	Parameters
+	----------
+	model : torch.nn.module
+	optimizer : torch.optim
+	dataloader : DataLoader
+
+	Returns
+	-------
+	loss : float
+		One epoch train loss.
+	"""
+	model.train()
+	train_loss = 0
+	for idx, batch in enumerate(dataloader):
+		x, z = batch
+		optimizer.zero_grad()
+		mu, log_s2, w = model(x)
+		loss = loss_function(mu, log_s2, w, z)
+		loss.backward()
+		optimizer.step()
+		train_loss += loss.item()
+	train_loss /= (idx + 1)
+	return train_loss
+
+
+def eval_gmm(model, dataloader, loss_function):
+	"""
+
+	Parameters
+	----------
+	# TODO: add loss function to docstring
+	loss_fuobject : object
+	model : CONVAE
+		Model to be evaluated.
+	dataloader : DataLoader
+		Dataloader to be used.
+	Returns
+	-------
+	eval_loss : float
+		Evaluation loss.
+	"""
+	model.eval()
+	eval_loss = 0
+	with torch.no_grad():
+		for idx, batch in enumerate(dataloader):
+			x, z = batch
+			mu, log_s2, w = model(x)
+			loss = loss_function(mu, log_s2, w, z)
+			eval_loss += loss.item()
+		eval_loss /= (idx + 1)
+	return eval_loss
+
+
+def gmmloss(mu, log_s2, w, z):
+	r = (- 0.5 * ((z.unsqueeze(-1) - mu).pow(2) / log_s2.exp()).sum(dim=1)).exp()
+	det = log_s2.exp().prod(dim=1).sqrt()
+	pr = (r / det * w).sum(dim=1)
+	return (- torch.log(pr)).mean()

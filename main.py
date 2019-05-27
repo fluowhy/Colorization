@@ -60,15 +60,23 @@ def loss_function(x_out, x, lmi=0.5):
 	bs = x.shape[0]
 	ch_a_flat_pred = x_out[:, 0].reshape(bs, -1)
 	ch_b_flat_pred = x_out[:, 1].reshape(bs, -1)
-	loss_a = bce(ch_a_flat_pred, x[:, 0].reshape(bs, -1))
-	loss_b = bce(ch_b_flat_pred, x[:, 1].reshape(bs, -1))
-	#mi_ch_a_b = - mi(ch_a_flat_pred, ch_b_flat_pred, bw=2)
-	return loss_a + loss_b# + lmi*mi_ch_a_b
+	loss_a = mse(ch_a_flat_pred, x[:, 0].reshape(bs, -1))
+	loss_b = mse(ch_b_flat_pred, x[:, 1].reshape(bs, -1))
+	mi_ch_a_b = - mi(ch_a_flat_pred, ch_b_flat_pred, bw=2)
+	return loss_a + loss_b + lmi*mi_ch_a_b
 
+best_loss = np.inf
 for epoch in range(epochs):
 	train_loss = train(model, optimizer, trainloader, loss_function)
 	test_loss = eval(model, testloader, loss_function)
+	if test_loss < best_loss:
+		print("Saving")
+		torch.save(model.state_dict(), "models/color_model.pth")
+		best_loss = test_loss
 	print_epoch(epoch, train_loss, test_loss)
 
-plot_images(model, train_lab, 4, "train")
-plot_images(model, test_lab, 4)
+plot_images(model, train_lab, 4, "train_mse_mi")
+plot_images(model, test_lab, 4, "test_mse_mi")
+
+# TODO: add one image processing
+# TODO: save best model
