@@ -14,18 +14,20 @@ k = 3
 lr = 2e-4
 wd = 0.
 epochs = 100
-bs = 10
+bs = 100
 
-N = 1000
+N = 10000
 
 u0 = np.ones(nin)
 s = np.ones(nin)
 
 x0 = np.random.multivariate_normal(mean=u0, cov=np.diag(s), size=N)
 x1 = np.random.multivariate_normal(mean=- u0, cov=np.diag(s), size=N)
-
 x = np.vstack((x0, x1))
-z = np.random.normal(size=(N, ld))
+
+z0 = np.random.normal(1, 1, size=(N, ld))
+z1 = np.random.normal(- 1, 1, size=(N, ld))
+z = np.vstack((z0, z1))
 
 idx = np.arange(N)
 idx_train, idx_test = train_test_split(idx, test_size=0.2, shuffle=True)
@@ -56,7 +58,20 @@ gmm = GMM(nin=nin, nh=10, k=k, ld=ld).to(device)
 optimizer = torch.optim.Adam(gmm.parameters(), lr=lr, weight_decay=wd)
 gmml = GMMLoss(ld)
 
+best_loss = np.inf
 for epoch in range(epochs):
-    train_loss = train_gmm(gmm, optimizer, train_loader, gmml)
-    test_loss = eval_gmm(gmm, test_loader, gmml)
-    print_epoch(epoch, train_loss, test_loss)
+	train_loss = train_gmm(gmm, optimizer, train_loader, gmml)
+	test_loss = eval_gmm(gmm, test_loader, gmml)
+	best_loss = save_or_not(test_loss, best_loss, gmm, "gmm")
+	print_epoch(epoch, train_loss, test_loss)
+
+gmm.load_state_dict(torch.load("models/gmm.pth"))
+gmm.eval()
+with torch.no_grad():
+	mu, _, _ = gmm(x_test)
+mu = mu.cpu().numpy()
+
+plt.figure()
+for i in range(k):
+	plt.scatter(mu[:, 0, i], mu[:, 0, i], marker=".")
+plt.show()

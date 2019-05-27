@@ -5,6 +5,14 @@ import matplotlib.pyplot as plt
 from im import *
 
 
+def save_or_not(test_loss, best_loss, model, savename):
+	if test_loss < best_loss:
+		print("Saving")
+		torch.save(model.state_dict(), "models/{}.pth".format(savename))
+		best_loss = test_loss
+	return best_loss
+
+
 def train(model, optimizer, dataloader, loss_function):
 	"""
 
