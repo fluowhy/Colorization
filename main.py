@@ -25,8 +25,8 @@ N = 2000
 bs = 50
 lr = 2e-4
 wd = 0.
-epochs = 2
-ld = 15 # latent space dimension
+epochs = 100
+ld = 2 # latent space dimension
 k = 3 # colorizations
 
 train_tensor = torch.tensor(trainset.data, dtype=torch.float, device="cpu")[:N].float()/255
@@ -110,6 +110,8 @@ with torch.no_grad():
 		img_rgb[i] = unnormalize_and_lab_2_rgb(img_lab[i])
 		plt.imshow(np.transpose(img_rgb[i, 0], (1, 2, 0)))
 		plt.savefig("figures/colorized_{}".format(i), dpi=400)
+
 # TODO: add one image processing
 # TODO: save best model
 # TODO try MI between L,a and L,b
+# TODO: add real image
