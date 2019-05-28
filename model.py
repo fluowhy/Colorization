@@ -111,14 +111,67 @@ class GMM(torch.nn.Module):
         self.fcs = torch.nn.Linear(nh, int(ld*k))
         self.fcw = torch.nn.Linear(nh, k)
         self.relu = torch.nn.ReLU()
+        self.tanh = torch.nn.Tanh()
         self.softmax = torch.nn.Softmax(dim=1)
         self.ld = ld
         self.k = k
 
     def forward(self, x):
         bs = x.shape[0]
-        h1 = self.relu(self.fc1(x))
+        h1 = self.tanh(self.fc1(x))
         mu = self.fcu(h1)
         log_s = self.fcs(h1)
+        w = self.softmax(self.fcw(h1))
+        return mu.reshape((bs, self.ld, self.k)), log_s.reshape((bs, self.ld, self.k)), w
+
+
+class CONVGMM(torch.nn.Module):
+    def __init__(self, inch, nch, ks, nh, k, ld, ims=32):
+        """
+
+        Parameters
+        ----------
+        nin : int
+            Input dimensions.
+        nh : int
+            Hidden units.
+        k : int
+            Number of GMM components.
+        ld : int
+            Latent dimensions.
+        """
+        # TODO: conv gmm
+        super(CONVGMM, self).__init__()
+        self.conv = torch.nn.Sequential(
+            torch.nn.Conv2d(inch, nch, ks, stride=2, padding=int(ks / 2)),
+            torch.nn.BatchNorm2d(nch),
+            torch.nn.ReLU(),
+            torch.nn.Conv2d(nch, int(nch * 2), ks, stride=2, padding=int(ks / 2)),
+            torch.nn.BatchNorm2d(int(nch * 2)),
+            torch.nn.ReLU(),
+            torch.nn.Conv2d(int(nch * 2), int(nch * 4), ks, stride=2, padding=int(ks / 2)),
+            torch.nn.BatchNorm2d(int(nch * 4)),
+            torch.nn.ReLU(),
+            torch.nn.Conv2d(int(nch * 4), int(nch * 8), ks, stride=2, padding=int(ks / 2)),
+            torch.nn.BatchNorm2d(int(nch * 8)),
+            torch.nn.ReLU(),
+            Flatten(),
+            torch.nn.Linear(int(nch * 8) * 2 * int(ims / (2**4)), nh)
+        )
+
+        self.fcu = torch.nn.Linear(nh, int(ld * k))
+        self.fcs = torch.nn.Linear(nh, int(ld * k))
+        self.fcw = torch.nn.Linear(nh, k)
+        self.relu = torch.nn.ReLU()
+        self.tanh = torch.nn.Tanh()
+        self.softmax = torch.nn.Softmax(dim=1)
+        self.ld = ld
+        self.k = k
+
+    def forward(self, x):
+        bs = x.shape[0]
+        h1 = self.conv(x)
+        mu = self.fcu(h1)
+        log_s = self.tanh(self.fcs(h1))
         w = self.softmax(self.fcw(h1))
         return mu.reshape((bs, self.ld, self.k)), log_s.reshape((bs, self.ld, self.k)), w

@@ -25,9 +25,8 @@ N = 2000
 bs = 50
 lr = 2e-4
 wd = 0.
-epochs = 100
-ld = 15 # latent space dimension
-k = 3 # colorizations
+epochs = 2
+ld = 2
 
 train_tensor = torch.tensor(trainset.data, dtype=torch.float, device="cpu")[:N].float()/255
 test_tensor = torch.tensor(testset.data, dtype=torch.float, device="cpu")[:N].float()/255
@@ -67,49 +66,19 @@ def loss_function(x_out, x, lmi=0.5):
 	# mi_ch_a_b = - mi(ch_a_flat_pred, ch_b_flat_pred, bw=2)
 	return loss_a + loss_b  # + lmi * mi_ch_a_b
 
-gmm = CONVGMM(1, 32, 5, 1024, k, ld).to(device)
-optimizer_gmm = torch.optim.Adam(gmm.parameters(), lr=lr, weight_decay=wd)
-
+best_loss = np.inf
 for epoch in range(epochs):
-	model.train()
-	gmm.train()
-	train_loss_ae = 0
-	train_loss_gmm = 0
-	for idx, batch in enumerate(trainloader):
-		batch = batch[0]
-		cL = batch[:, 0].unsqueeze(1)
-		cab = batch[:, 1:]
-		optimizer.zero_grad()
-		optimizer_gmm.zero_grad()
-		output, z = model(cab)
-		z = z.detach().clone()
-		mu, log_s2, w = gmm(cL)
-		loss_ae = loss_function(output, cab)
-		loss_gmm = gmml(mu, log_s2, w, z)
-		loss_ae.backward()
-		loss_gmm.backward()
-		optimizer.step()
-		optimizer_gmm.step()
-		train_loss_ae += loss_ae.item()
-		train_loss_gmm += loss_gmm.item()
-	train_loss_ae /= (idx + 1)
-	train_loss_gmm /= (idx + 1)
-	print("Epoch {} AE train loss {:.3f} GMM train loss {:.3f}".format(epoch, train_loss_ae, train_loss_gmm))
+	train_loss = train(model, optimizer, trainloader, loss_function)
+	test_loss = eval(model, testloader, loss_function)
+	if test_loss < best_loss:
+		print("Saving")
+		torch.save(model.state_dict(), "models/color_model.pth")
+		best_loss = test_loss
+	print_epoch(epoch, train_loss, test_loss)
 
-model.eval()
-gmm.eval()
-img_lab = torch.zeros((k, test_lab.shape[0], 3, test_lab.shape[2], test_lab.shape[2]))
-img_rgb = np.zeros((k, test_lab.shape[0], 3, test_lab.shape[2], test_lab.shape[2]))
-with torch.no_grad():
-	z, _, _ = gmm(test_lab[:, 0].unsqueeze(1))
-	for i in range(k):
-		ab = model.decode(z[:, :, 0].reshape((z.shape[0], z.shape[1], 1, 1)))
-		img_lab[i, :, 1] = ab[:, 0]
-		img_lab[i, :, 2] = ab[:, 1]
-		img_lab[i, :, 0] = test_lab[:, 0]
-		img_rgb[i] = unnormalize_and_lab_2_rgb(img_lab[i])
-		plt.imshow(np.transpose(img_rgb[i, 0], (1, 2, 0)))
-		plt.savefig("figures/colorized_{}".format(i), dpi=400)
+plot_images(model, train_lab, 4, "train_mse_mi")
+plot_images(model, test_lab, 4, "test_mse_mi")
+
 # TODO: add one image processing
 # TODO: save best model
 # TODO try MI between L,a and L,b

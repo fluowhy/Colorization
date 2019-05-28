@@ -222,3 +222,17 @@ def gmmloss(mu, log_s2, w, z):
 	det = log_s2.exp().prod(dim=1).sqrt()
 	pr = (r / det * w).sum(dim=1)
 	return (- torch.log(pr)).mean()
+
+
+def unnormalize_and_lab_2_rgb(x):
+	"""
+	Transforms an image x from lab to rgb with previous unnormalization.
+	Parameters
+	----------
+	x : torch.tensor, (N, C, w, h)
+		Image to unnormalize and transform from lab to rgb.
+	Returns
+	-------
+		Transformed image as numpy array.
+	"""
+	return colors.lab_to_rgb(unnormalize_lab(x)).cpu().numpy()
