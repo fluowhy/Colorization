@@ -25,7 +25,7 @@ N = 2000
 bs = 50
 lr = 2e-4
 wd = 0.
-epochs = 100
+epochs = 2
 ld = 15 # latent space dimension
 k = 3 # colorizations
 
@@ -103,7 +103,7 @@ img_rgb = np.zeros((k, test_lab.shape[0], 3, test_lab.shape[2], test_lab.shape[2
 with torch.no_grad():
 	z, _, _ = gmm(test_lab[:, 0].unsqueeze(1))
 	for i in range(k):
-		ab = model.decode(z[:, :, 0].reshape((z.shape[0], z.shape[1], 1, 1)))
+		ab = model.decode(z[:, :, i].reshape((z.shape[0], z.shape[1], 1, 1)))
 		img_lab[i, :, 1] = ab[:, 0]
 		img_lab[i, :, 2] = ab[:, 1]
 		img_lab[i, :, 0] = test_lab[:, 0]
