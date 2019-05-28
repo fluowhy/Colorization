@@ -115,3 +115,4 @@ with torch.no_grad():
 # TODO: save best model
 # TODO try MI between L,a and L,b
 # TODO: add real image
+# TODO fix gmm high dim
