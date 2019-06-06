@@ -13,7 +13,7 @@ def float_2_uint8(x):
     return (x*255).astype(int)
 
 
-def normalize_l(x, l=[0., 100.]):
+def normalize(x, l):
     """
 
     Parameters
@@ -28,10 +28,10 @@ def normalize_l(x, l=[0., 100.]):
     torch.tensor
         Normalized L channel image.
     """
-    return (x - l[0])/(l[1] - l[0])
+    return 2*(x - l[0])/(l[1] - l[0]) - 1
 
 
-def unnormalize_l(x, l=[0., 100.]):
+def unnormalize(x, l):
     """
 
     Parameters
@@ -46,15 +46,7 @@ def unnormalize_l(x, l=[0., 100.]):
     torch.tensor
         Unnormalized L channel image.
     """
-    return (l[1] - l[0])*x + l[0]
-
-
-def normalize_ab(x, l=[- 128., 127.]):
-    return (x - l[0])/(l[1] - l[0])
-
-
-def unnormalize_ab(x, l=[- 128., 127.]):
-    return (l[1] - l[0])*x + l[0]
+    return 0.5*(l[1] - l[0])*(x + 1) + l[0]
 
 
 def normalize_lab(x):
@@ -71,17 +63,17 @@ def normalize_lab(x):
     """
     if len(x.shape) == 4:
         z = torch.zeros(x.shape)
-        x_l = normalize_l(x[:, 0])
-        x_a = normalize_ab(x[:, 1])
-        x_b = normalize_ab(x[:, 2])
+        x_l = normalize(x[:, 0], [0., 100.])
+        x_a = normalize(x[:, 1], [- 128., 127.])
+        x_b = normalize(x[:, 2], [- 128., 127.])
         z[:, 0] = x_l
         z[:, 1] = x_a
         z[:, 2] = x_b
     else:
         z = torch.zeros(x.shape)
-        x_l = normalize_l(x[0])
-        x_a = normalize_ab(x[1])
-        x_b = normalize_ab(x[2])
+        x_l = normalize(x[0], [0., 100.])
+        x_a = normalize(x[1], [- 128., 127.])
+        x_b = normalize(x[2], [- 128., 127.])
         z[0] = x_l
         z[1] = x_a
         z[2] = x_b
@@ -102,17 +94,17 @@ def unnormalize_lab(x):
     """
     if len(x.shape) == 4:
         z = torch.zeros(x.shape)
-        x_l = unnormalize_l(x[:, 0])
-        x_a = unnormalize_ab(x[:, 1])
-        x_b = unnormalize_ab(x[:, 2])
+        x_l = unnormalize(x[:, 0], [0., 100.])
+        x_a = unnormalize(x[:, 1], [- 128., 127.])
+        x_b = unnormalize(x[:, 2], [- 128., 127.])
         z[:, 0] = x_l
         z[:, 1] = x_a
         z[:, 2] = x_b
     else:
         z = torch.zeros(x.shape)
-        x_l = unnormalize_l(x[0])
-        x_a = unnormalize_ab(x[1])
-        x_b = unnormalize_ab(x[2])
+        x_l = unnormalize(x[0], [0., 100.])
+        x_a = unnormalize(x[1], [- 128., 127.])
+        x_b = unnormalize(x[2], [- 128., 127.])
         z[0] = x_l
         z[1] = x_a
         z[2] = x_b

@@ -32,9 +32,9 @@ class CONVAE(torch.nn.Module):
             torch.nn.Conv2d(int(nch * 4), int(nch * 8), ks, stride=2, padding=int(ks/2)),
             torch.nn.BatchNorm2d(int(nch * 8)),
             torch.nn.ReLU(),
-            torch.nn.Conv2d(int(nch * 8), ld, ks, stride=2, padding=int(ks / 2))
-            #Flatten(),
-            #torch.nn.Linear(int(nch * 8) * 2 * int(32 / (2**4)), ld)
+            torch.nn.Conv2d(int(nch * 8), ld, ks, stride=2, padding=int(ks / 2)),
+            Flatten(),
+            torch.nn.Linear(int(nch * 8) * 2 * int(32 / (2**4)), ld)
             )
 
         self.decoder = torch.nn.Sequential(
@@ -175,3 +175,28 @@ class CONVGMM(torch.nn.Module):
         log_s = self.tanh(self.fcs(h1))
         w = self.softmax(self.fcw(h1))
         return mu.reshape((bs, self.ld, self.k)), log_s.reshape((bs, self.ld, self.k)), w
+
+
+class DIS(torch.nn.Module):
+    def __init__(self, inch, nch, nout, ks):
+        super(DIS, self).__init__()
+        self.dis = torch.nn.Sequential(
+            torch.nn.Conv2d(inch, nch, ks, stride=2, padding=int(ks / 2)),
+            torch.nn.BatchNorm2d(nch),
+            torch.nn.ReLU(),
+            torch.nn.Conv2d(nch, int(nch * 2), ks, stride=2, padding=int(ks / 2)),
+            torch.nn.BatchNorm2d(int(nch * 2)),
+            torch.nn.ReLU(),
+            torch.nn.Conv2d(int(nch * 2), int(nch * 4), ks, stride=2, padding=int(ks / 2)),
+            torch.nn.BatchNorm2d(int(nch * 4)),
+            torch.nn.ReLU(),
+            torch.nn.Conv2d(int(nch * 4), int(nch * 8), ks, stride=2, padding=int(ks / 2)),
+            torch.nn.BatchNorm2d(int(nch * 8)),
+            torch.nn.ReLU(),
+            Flatten(),
+            torch.nn.Linear(int(nch * 8) * 2 * int(32 / (2 ** 4)), nout),
+            torch.nn.Sigmoid()
+        )
+
+    def forward(self, x):
+        return self.dis(x)

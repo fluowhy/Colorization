@@ -9,6 +9,7 @@ from im import *
 from model import *
 from utils import *
 
+seed_everything()
 
 if not os.path.exists("figures"):
     os.makedirs("figures")
@@ -26,26 +27,22 @@ transform = [torchvision.transforms.Resize((h, w)), torchvision.transforms.ToTen
 trainset = torchvision.datasets.CIFAR10(root="../datasets/cifar10/train", train=True, download=True, transform=torchvision.transforms.Compose(transform))
 testset = torchvision.datasets.CIFAR10(root="../datasets/cifar10/test", train=False, download=True, transform=torchvision.transforms.Compose(transform))
 
-<<<<<<< HEAD
-N = 100
-=======
+N = 10000
 full = False
-N = 10
->>>>>>> d5b1cd3bf611f4a08d8606e1dfdcf7a43db1377e
 bs = 50
 lr = 2e-4
 wd = 0.
-epochs = 10
-ld = 2 # latent space dimension
-k = 4 # colorizations
+epochs = 100
+ld = 2  # latent space dimension
+k = 4  # colorizations
 
 
 if full:
-	train_tensor = torch.tensor(trainset.data, dtype=torch.float, device=device).float() / 255
-	test_tensor = torch.tensor(testset.data, dtype=torch.float, device=device).float() / 255
+	train_tensor = torch.tensor(trainset.data, dtype=torch.float, device=device) / 255
+	test_tensor = torch.tensor(testset.data, dtype=torch.float, device=device) / 255
 else:
-	train_tensor = torch.tensor(trainset.data, dtype=torch.float, device=device)[:N].float()/255
-	test_tensor = torch.tensor(testset.data, dtype=torch.float, device=device)[:N].float()/255
+	train_tensor = torch.tensor(trainset.data[:N], dtype=torch.float, device=device)/255
+	test_tensor = torch.tensor(testset.data[:N], dtype=torch.float, device=device)/255
 
 train_tensor = train_tensor.transpose(1, -1)
 train_tensor = train_tensor.transpose(-1, -2)
@@ -87,19 +84,17 @@ mse = torch.nn.MSELoss().to(device)
 gmml = GMMLoss(ld)
 
 
-def loss_function(x_out, x, lmi=0.5):
+def loss_function(x_out, x, x_gray, lmi=0.5):
 	bs = x.shape[0]
 	ch_a_flat_pred = x_out[:, 0].reshape(bs, -1)
 	ch_b_flat_pred = x_out[:, 1].reshape(bs, -1)
 	loss_a = mse(ch_a_flat_pred, x[:, 0].reshape(bs, -1))
 	loss_b = mse(ch_b_flat_pred, x[:, 1].reshape(bs, -1))
-<<<<<<< HEAD
-	mi_ch_a_b = - mi(ch_a_flat_pred, ch_b_flat_pred, bw=2)
-	return loss_a + loss_b - 1/mi_ch_a_b
-=======
-	# mi_ch_a_b = - mi(ch_a_flat_pred, ch_b_flat_pred, bw=2)
-	return loss_a + loss_b  # + lmi * mi_ch_a_b
->>>>>>> d5b1cd3bf611f4a08d8606e1dfdcf7a43db1377e
+	mi_ch_a_g = mi(ch_a_flat_pred, x_gray.reshape(bs, -1), bw=2)
+	mi_ch_b_g = mi(ch_b_flat_pred, x_gray.reshape(bs, -1), bw=2)
+	return loss_a + loss_b + 1/mi_ch_a_g + 1/mi_ch_b_g
+
+# auto encoder training
 
 for epoch in range(epochs):
 	model.train()
@@ -114,18 +109,40 @@ for epoch in range(epochs):
 		optimizer_gmm.zero_grad()
 		output, z = model(cab)
 		z = z.detach().clone()
-		mu, log_s2, w = gmm(cL)
-		loss_ae = loss_function(output, cab)
-		loss_gmm = gmml(mu, log_s2, w, z)
+		#mu, log_s2, w = gmm(cL)
+		loss_ae = loss_function(output, cab, cL)
+		#loss_gmm = gmml(mu, log_s2, w, z)
 		loss_ae.backward()
-		loss_gmm.backward()
+		#loss_gmm.backward()
 		optimizer.step()
-		optimizer_gmm.step()
+		#optimizer_gmm.step()
 		train_loss_ae += loss_ae.item()
-		train_loss_gmm += loss_gmm.item()
+		#train_loss_gmm += loss_gmm.item()
 	train_loss_ae /= (idx + 1)
-	train_loss_gmm /= (idx + 1)
-	print("Epoch {} AE train loss {:.3f} GMM train loss {:.3f}".format(epoch, train_loss_ae, train_loss_gmm))
+	#train_loss_gmm /= (idx + 1)
+	model.eval()
+	gmm.eval()
+	test_loss_ae = 0
+	test_loss_gmm = 0
+	with torch.no_grad():
+		for idx, batch in enumerate(testloader):
+			batch = batch[0]
+			cL = batch[:, 0].unsqueeze(1)
+			cab = batch[:, 1:]
+			output, z = model(cab)
+			z = z.detach().clone()
+			#mu, log_s2, w = gmm(cL)
+			loss_ae = loss_function(output, cab, cL)
+			#loss_gmm = gmml(mu, log_s2, w, z)
+			test_loss_ae += loss_ae.item()
+			#test_loss_gmm += loss_gmm.item()
+	test_loss_ae /= (idx + 1)
+	#test_loss_gmm /= (idx + 1)
+	print("Epoch {} AE train loss {:.3f} test loss {:.3f} | GMM train loss {:.3f} test loss {:.3f}".format(epoch,
+																										   train_loss_ae,
+																										   test_loss_ae,
+																										   train_loss_gmm,
+																										   test_loss_gmm))
 
 n = 10
 selected = np.random.choice(test_lab.shape[0], size=n, replace=False)

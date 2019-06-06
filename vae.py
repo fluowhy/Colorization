@@ -12,48 +12,50 @@ author:
 class VAE(nn.Module):
   
   #define layers
-  def __init__(self):
+  def __init__(self, nf, device):
     super(VAE, self).__init__()
+    self.device = device
     self.hidden_size = 64
     self.enc_end_size = 2
+    self.nf = nf # 128
 
     #Encoder layers
-    self.enc_conv1 = nn.Conv2d(2, 128, 5, stride=2, padding=2)
-    self.enc_bn1 = nn.BatchNorm2d(128)
-    self.enc_conv2 = nn.Conv2d(128, 256, 5, stride=2, padding=2)
-    self.enc_bn2 = nn.BatchNorm2d(256)
-    self.enc_conv3 = nn.Conv2d(256, 512, 5, stride=2, padding=2)
-    self.enc_bn3 = nn.BatchNorm2d(512)
-    self.enc_conv4 = nn.Conv2d(512, 1024, 3, stride=2, padding=1)
-    self.enc_bn4 = nn.BatchNorm2d(1024)
-    self.enc_fc1 = nn.Linear(self.enc_end_size*self.enc_end_size*1024, self.hidden_size*2)
+    self.enc_conv1 = nn.Conv2d(2, self.nf, 5, stride=2, padding=2)
+    self.enc_bn1 = nn.BatchNorm2d(self.nf)
+    self.enc_conv2 = nn.Conv2d(self.nf, self.nf*2, 5, stride=2, padding=2)
+    self.enc_bn2 = nn.BatchNorm2d(self.nf*2)
+    self.enc_conv3 = nn.Conv2d(self.nf*2, self.nf*4, 5, stride=2, padding=2)
+    self.enc_bn3 = nn.BatchNorm2d(self.nf*4)
+    self.enc_conv4 = nn.Conv2d(self.nf*4, self.nf*8, 3, stride=2, padding=1)
+    self.enc_bn4 = nn.BatchNorm2d(self.nf*8)
+    self.enc_fc1 = nn.Linear(self.enc_end_size*self.enc_end_size*self.nf*8, self.hidden_size*2)
     self.enc_dropout1 = nn.Dropout(p=.7)
 
     #Cond encoder layers
-    self.cond_enc_conv1 = nn.Conv2d(1, 128, 5, stride=2, padding=2)
-    self.cond_enc_bn1 = nn.BatchNorm2d(128)
-    self.cond_enc_conv2 = nn.Conv2d(128, 256, 5, stride=2, padding=2)
-    self.cond_enc_bn2 = nn.BatchNorm2d(256)
-    self.cond_enc_conv3 = nn.Conv2d(256, 512, 5, stride=2, padding=2)
-    self.cond_enc_bn3 = nn.BatchNorm2d(512)
-    self.cond_enc_conv4 = nn.Conv2d(512, 1024, 3, stride=2, padding=1)
-    self.cond_enc_bn4 = nn.BatchNorm2d(1024)
+    self.cond_enc_conv1 = nn.Conv2d(1, self.nf, 5, stride=2, padding=2)
+    self.cond_enc_bn1 = nn.BatchNorm2d(self.nf)
+    self.cond_enc_conv2 = nn.Conv2d(self.nf, self.nf*2, 5, stride=2, padding=2)
+    self.cond_enc_bn2 = nn.BatchNorm2d(self.nf*2)
+    self.cond_enc_conv3 = nn.Conv2d(self.nf*2, self.nf*4, 5, stride=2, padding=2)
+    self.cond_enc_bn3 = nn.BatchNorm2d(self.nf*4)
+    self.cond_enc_conv4 = nn.Conv2d(self.nf*4, self.nf*8, 3, stride=2, padding=1)
+    self.cond_enc_bn4 = nn.BatchNorm2d(self.nf*8)
 
     #Decoder layers
-    self.dec_upsamp1 = nn.Upsample(scale_factor=4, mode='bilinear')
-    self.dec_conv1 = nn.Conv2d(1024+self.hidden_size, 512, 3, stride=1, padding=1)
-    self.dec_bn1 = nn.BatchNorm2d(512)
+    self.dec_upsamp1 = nn.Upsample(scale_factor=2, mode='bilinear')  # scale_factor=4
+    self.dec_conv1 = nn.Conv2d(self.nf*8+self.hidden_size, self.nf*4, 3, stride=1, padding=1)
+    self.dec_bn1 = nn.BatchNorm2d(self.nf*4)
     self.dec_upsamp2 = nn.Upsample(scale_factor=2, mode='bilinear')
-    self.dec_conv2 = nn.Conv2d(512*2, 256, 5, stride=1, padding=2)
-    self.dec_bn2 = nn.BatchNorm2d(256)
+    self.dec_conv2 = nn.Conv2d(self.nf*4*2, self.nf*2, 5, stride=1, padding=2)
+    self.dec_bn2 = nn.BatchNorm2d(self.nf*2)
     self.dec_upsamp3 = nn.Upsample(scale_factor=2, mode='bilinear')
-    self.dec_conv3 = nn.Conv2d(256*2, 128, 5, stride=1, padding=2)
-    self.dec_bn3 = nn.BatchNorm2d(128)
+    self.dec_conv3 = nn.Conv2d(self.nf*2*2, self.nf, 5, stride=1, padding=2)
+    self.dec_bn3 = nn.BatchNorm2d(self.nf)
     self.dec_upsamp4 = nn.Upsample(scale_factor=2, mode='bilinear')
-    self.dec_conv4 = nn.Conv2d(128*2, 64, 5, stride=1, padding=2)
-    self.dec_bn4 = nn.BatchNorm2d(64)
+    self.dec_conv4 = nn.Conv2d(self.nf*2, int(self.nf/2), 5, stride=1, padding=2)
+    self.dec_bn4 = nn.BatchNorm2d(int(self.nf/2))
     self.dec_upsamp5 = nn.Upsample(scale_factor=2, mode='bilinear')
-    self.dec_conv5 = nn.Conv2d(64, 2, 5, stride=1, padding=2)
+    self.dec_conv5 = nn.Conv2d(int(self.nf/2), 2, 5, stride=1, padding=2)
 
   def encoder(self, x):
     x = F.relu(self.enc_conv1(x))
@@ -64,7 +66,7 @@ class VAE(nn.Module):
     x = self.enc_bn3(x)
     x = F.relu(self.enc_conv4(x))
     x = self.enc_bn4(x)
-    x = x.view(-1, self.enc_end_size*self.enc_end_size*1024)
+    x = x.view(-1, self.enc_end_size*self.enc_end_size*self.nf*8)
     x = self.enc_dropout1(x)
     x = self.enc_fc1(x)
     mu = x[..., :self.hidden_size]
@@ -101,7 +103,7 @@ class VAE(nn.Module):
     x = F.relu(self.dec_conv4(x))
     x = self.dec_bn4(x)
     x = self.dec_upsamp5(x) 
-    x = F.tanh(self.dec_conv5(x))
+    x = torch.tanh(self.dec_conv5(x))
     return x
       
   #define forward pass
@@ -120,10 +122,10 @@ class VAE(nn.Module):
     """
     sc_feat32, sc_feat16, sc_feat8, sc_feat4 = self.cond_encoder(greylevel)
     mu, logvar = self.encoder(color)
-    color_out = self.decoder(z, sc_feat32, sc_feat16, sc_feat8, sc_feat4)
     stddev = torch.sqrt(torch.exp(logvar))
-    eps = torch.randn(stddev.size()).normal_().cuda()
+    eps = torch.randn(stddev.size()).normal_().to(self.device)
     z = torch.add(mu, torch.mul(eps, stddev))
+    color_out = self.decoder(z, sc_feat32, sc_feat16, sc_feat8, sc_feat4)
     return mu, logvar, color_out
 
 

@@ -2,6 +2,8 @@ import torch
 import torchvision
 import numpy as np
 import matplotlib.pyplot as plt
+import random
+import os
 
 from im import *
 
@@ -225,38 +227,38 @@ def gmmloss(mu, log_s2, w, z):
 	return (- torch.log(pr)).mean()
 
 
-<<<<<<< HEAD
 def load_dataset(N, device="cpu", all=False):
-    """
-    load data from Cifar10.
-    Parameters
-    ----------
-    N
-    all
+	"""
+	load data from Cifar10.
+	Parameters
+	----------
+	N
+	all
 
-    Returns
-    -------
-    Torch tensors from train and test sets.
-    """
+	Returns
+	-------
+	Torch tensors from train and test sets.
+	"""
 
-    trainset = torchvision.datasets.CIFAR10(root="../datasets/cifar10/train", train=True, download=True)
-    testset = torchvision.datasets.CIFAR10(root="../datasets/cifar10/test", train=False, download=True)
-    if all:
-        train_tensor = torch.tensor(trainset.data, dtype=torch.float, device="cpu") / 255
-        test_tensor = torch.tensor(testset.data, dtype=torch.float, device="cpu") / 255
-    else:
-        train_tensor = torch.tensor(trainset.data[:N], dtype=torch.float, device="cpu") / 255
-        test_tensor = torch.tensor(testset.data[:N], dtype=torch.float, device="cpu") / 255
-    train_tensor = train_tensor.transpose(1, -1)
-    train_tensor = train_tensor.transpose(-1, -2)
-    test_tensor = test_tensor.transpose(1, -1)
-    test_tensor = test_tensor.transpose(-1, -2)
-    train_lab = colors.rgb_to_lab(train_tensor)
-    test_lab = colors.rgb_to_lab(test_tensor)
-    train_lab = normalize_lab(train_lab).to(device)
-    test_lab = normalize_lab(test_lab).to(device)
-    return train_lab, test_lab
-=======
+	trainset = torchvision.datasets.CIFAR10(root="../datasets/cifar10/train", train=True, download=True)
+	testset = torchvision.datasets.CIFAR10(root="../datasets/cifar10/test", train=False, download=True)
+	if all:
+		train_tensor = torch.tensor(trainset.data, dtype=torch.float, device="cpu") / 255
+		test_tensor = torch.tensor(testset.data, dtype=torch.float, device="cpu") / 255
+	else:
+		train_tensor = torch.tensor(trainset.data[:N], dtype=torch.float, device="cpu") / 255.
+		test_tensor = torch.tensor(testset.data[:N], dtype=torch.float, device="cpu") / 255.
+	train_tensor = train_tensor.transpose(1, -1)
+	train_tensor = train_tensor.transpose(-1, -2)
+	test_tensor = test_tensor.transpose(1, -1)
+	test_tensor = test_tensor.transpose(-1, -2)
+	train_lab = colors.rgb_to_lab(train_tensor)
+	test_lab = colors.rgb_to_lab(test_tensor)
+	train_lab = normalize_lab(train_lab).to(device)
+	test_lab = normalize_lab(test_lab).to(device)
+	return train_lab, test_lab
+
+
 def unnormalize_and_lab_2_rgb(x):
 	"""
 	Transforms an image x from lab to rgb with previous unnormalization.
@@ -269,4 +271,27 @@ def unnormalize_and_lab_2_rgb(x):
 		Transformed image as numpy array.
 	"""
 	return colors.lab_to_rgb(unnormalize_lab(x)).cpu().numpy()
->>>>>>> d5b1cd3bf611f4a08d8606e1dfdcf7a43db1377e
+
+
+def loss_function(x_out, x, x_gray):
+	bs = x.shape[0]
+	mi_ch_a_g = mi(x_out[:, 0].reshape(bs, -1), x_gray.reshape(bs, -1), bw=2)
+	mi_ch_b_g = mi(x_out[:, 1].reshape(bs, -1), x_gray.reshape(bs, -1), bw=2)
+	return 1/mi_ch_a_g + 1/mi_ch_b_g
+
+
+def seed_everything(seed=1234):
+	"""
+	Author: Benjamin Minixhofer
+	"""
+	random.seed(seed)
+	os.environ['PYTHONHASHSEED'] = str(seed)
+	np.random.seed(seed)
+	torch.manual_seed(seed)
+	torch.cuda.manual_seed(seed)
+	torch.backends.cudnn.deterministic = True
+	return
+
+
+def normalize_interval(x, p0, p1=[-1, 1]):
+	return (x - p0[0])*(p1[1] - p0[1])/(p1[0] - p0[0]) + p0[1]
