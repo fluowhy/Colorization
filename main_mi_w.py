@@ -49,7 +49,6 @@ if not os.path.exists("figures"):
 if not os.path.exists("models"):
     os.makedirs("models")
 
-cuda = False
 device = torch.device("cuda:0" if args.cuda and torch.cuda.is_available() else "cpu")
 print(device)
 

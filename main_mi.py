@@ -31,8 +31,7 @@ if not os.path.exists("figures"):
 if not os.path.exists("models"):
     os.makedirs("models")
 
-cuda = False
-device = torch.device("cuda:0" if cuda and torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:0" if args.cuda and torch.cuda.is_available() else "cpu")
 print(device)
 
 # weigths for L1 loss
@@ -105,7 +104,7 @@ for epoch in range(epochs):
     test_loss_vae /= (idx + 1)
     print("Epoch {} vae train loss {:.3f} test loss {:.3f}".format(epoch, train_loss_vae, test_loss_vae))
     if test_loss_vae < best_loss:
-        torch.save(vae.state_dict(), "models/vae.pth")
+        torch.save(vae.state_dict(), "models/vae_mi.pth")
         best_loss = test_loss_vae
         print("saving")
     losses[epoch] = [train_loss_vae, test_loss_vae]
@@ -119,7 +118,7 @@ plt.xlabel("epochs")
 plt.ylabel("vae loss")
 plt.savefig("figures/train_curve", dpi=dpi)
 
-vae.load_state_dict(torch.load("models/vae.pth"))
+vae.load_state_dict(torch.load("models/vae_mi.pth"))
 n = 10
 l = 5
 selected = np.random.choice(test_lab.shape[0], size=n, replace=False)

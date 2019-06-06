@@ -200,3 +200,28 @@ class DIS(torch.nn.Module):
 
     def forward(self, x):
         return self.dis(x)
+
+
+class CONVCLF(torch.nn.Module):
+    def __init__(self, inch, nch, nh, nout, ks):
+        super(CONVCLF, self).__init__()
+        self.clf = torch.nn.Sequential(
+            torch.nn.Conv2d(inch, nch, ks, stride=2, padding=int(ks / 2)),
+            torch.nn.BatchNorm2d(nch),
+            torch.nn.ReLU(),
+            torch.nn.Conv2d(nch, int(nch * 2), ks, stride=2, padding=int(ks / 2)),
+            torch.nn.BatchNorm2d(int(nch * 2)),
+            torch.nn.ReLU(),
+            torch.nn.Conv2d(int(nch * 2), int(nch * 4), ks, stride=2, padding=int(ks / 2)),
+            torch.nn.BatchNorm2d(int(nch * 4)),
+            torch.nn.ReLU(),
+            torch.nn.Conv2d(int(nch * 4), int(nch * 8), ks, stride=2, padding=int(ks / 2)),
+            torch.nn.BatchNorm2d(int(nch * 8)),
+            torch.nn.ReLU(),
+            Flatten(),
+            torch.nn.Linear(int(nch * 8) * 2 * int(32 / (2 ** 4)), nh),
+            torch.nn.Linear(nh, nout)
+        )
+
+    def forward(self, x):
+        return self.clf(x)
