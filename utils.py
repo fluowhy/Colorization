@@ -1,4 +1,5 @@
 import torch
+import torchvision
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -222,3 +223,35 @@ def gmmloss(mu, log_s2, w, z):
 	det = log_s2.exp().prod(dim=1).sqrt()
 	pr = (r / det * w).sum(dim=1)
 	return (- torch.log(pr)).mean()
+
+
+def load_dataset(N, device="cpu", all=False):
+    """
+    load data from Cifar10.
+    Parameters
+    ----------
+    N
+    all
+
+    Returns
+    -------
+    Torch tensors from train and test sets.
+    """
+
+    trainset = torchvision.datasets.CIFAR10(root="../datasets/cifar10/train", train=True, download=True)
+    testset = torchvision.datasets.CIFAR10(root="../datasets/cifar10/test", train=False, download=True)
+    if all:
+        train_tensor = torch.tensor(trainset.data, dtype=torch.float, device="cpu") / 255
+        test_tensor = torch.tensor(testset.data, dtype=torch.float, device="cpu") / 255
+    else:
+        train_tensor = torch.tensor(trainset.data[:N], dtype=torch.float, device="cpu") / 255
+        test_tensor = torch.tensor(testset.data[:N], dtype=torch.float, device="cpu") / 255
+    train_tensor = train_tensor.transpose(1, -1)
+    train_tensor = train_tensor.transpose(-1, -2)
+    test_tensor = test_tensor.transpose(1, -1)
+    test_tensor = test_tensor.transpose(-1, -2)
+    train_lab = colors.rgb_to_lab(train_tensor)
+    test_lab = colors.rgb_to_lab(test_tensor)
+    train_lab = normalize_lab(train_lab).to(device)
+    test_lab = normalize_lab(test_lab).to(device)
+    return train_lab, test_lab

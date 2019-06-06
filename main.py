@@ -22,7 +22,7 @@ transform = [torchvision.transforms.Resize((h, w)), torchvision.transforms.ToTen
 trainset = torchvision.datasets.CIFAR10(root="../datasets/cifar10/train", train=True, download=True, transform=torchvision.transforms.Compose(transform))
 testset = torchvision.datasets.CIFAR10(root="../datasets/cifar10/test", train=False, download=True, transform=torchvision.transforms.Compose(transform))
 
-N = 2000
+N = 100
 bs = 50
 lr = 2e-4
 wd = 0.
@@ -63,7 +63,7 @@ def loss_function(x_out, x, lmi=0.5):
 	loss_a = mse(ch_a_flat_pred, x[:, 0].reshape(bs, -1))
 	loss_b = mse(ch_b_flat_pred, x[:, 1].reshape(bs, -1))
 	mi_ch_a_b = - mi(ch_a_flat_pred, ch_b_flat_pred, bw=2)
-	return loss_a + loss_b + lmi*mi_ch_a_b
+	return loss_a + loss_b - 1/mi_ch_a_b
 
 best_loss = np.inf
 for epoch in range(epochs):
