@@ -225,6 +225,7 @@ def gmmloss(mu, log_s2, w, z):
 	return (- torch.log(pr)).mean()
 
 
+<<<<<<< HEAD
 def load_dataset(N, device="cpu", all=False):
     """
     load data from Cifar10.
@@ -255,3 +256,17 @@ def load_dataset(N, device="cpu", all=False):
     train_lab = normalize_lab(train_lab).to(device)
     test_lab = normalize_lab(test_lab).to(device)
     return train_lab, test_lab
+=======
+def unnormalize_and_lab_2_rgb(x):
+	"""
+	Transforms an image x from lab to rgb with previous unnormalization.
+	Parameters
+	----------
+	x : torch.tensor, (N, C, w, h)
+		Image to unnormalize and transform from lab to rgb.
+	Returns
+	-------
+		Transformed image as numpy array.
+	"""
+	return colors.lab_to_rgb(unnormalize_lab(x)).cpu().numpy()
+>>>>>>> d5b1cd3bf611f4a08d8606e1dfdcf7a43db1377e

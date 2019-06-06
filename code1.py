@@ -7,13 +7,13 @@ from sklearn.model_selection import train_test_split
 from model import *
 from utils import *
 
-device = "cpu"
+device = "cuda:0"
 nin = 4
 ld = 2
-k = 3
+k = 4
 lr = 2e-4
 wd = 0.
-epochs = 100
+epochs = 200
 bs = 100
 
 N = 10000
@@ -42,11 +42,7 @@ x_test = torch.tensor(x_test, dtype=torch.float, device=device)
 z_train = torch.tensor(z_train, dtype=torch.float, device=device)
 z_test = torch.tensor(z_test, dtype=torch.float, device=device)
 
-def gmmloss(mu, log_s2, w, z):
-	r = (- 0.5 * ((z.unsqueeze(-1) - mu).pow(2) / log_s2.exp()).sum(dim=1)).exp()
-	det = log_s2.exp().prod(dim=1).sqrt()
-	pr = (r / det * w).sum(dim=1)
-	return (- torch.log(pr)).mean()
+
 
 train_dataset = torch.utils.data.TensorDataset(x_train, z_train)
 test_dataset = torch.utils.data.TensorDataset(x_test, z_test)
@@ -73,5 +69,5 @@ mu = mu.cpu().numpy()
 
 plt.figure()
 for i in range(k):
-	plt.scatter(mu[:, 0, i], mu[:, 0, i], marker=".")
+	plt.scatter(mu[:, 0, i], mu[:, 1, i], marker=".")
 plt.show()
