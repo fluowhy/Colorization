@@ -1,10 +1,9 @@
 import torch
 import torchvision
-
 import matplotlib.pyplot as plt
-
 from tqdm import tqdm
 import pytorch_colors as colors
+import argparse
 
 from im import *
 from model import *
@@ -37,6 +36,12 @@ def getweights(img):
     img_lossweights[1, :, :] = binweights.reshape(h, w)
     return img_lossweights
 
+parser = argparse.ArgumentParser(description="colorization")
+parser.add_argument("--cuda", action="store_true", help="enables CUDA training (default False)")
+parser.add_argument("--N", type=int, default=10, help="training samples (default 10)")
+parser.add_argument("--e", type=int, default=2, help="epochs (default 2)")
+args = parser.parse_args()
+
 seed_everything()
 
 if not os.path.exists("figures"):
@@ -45,7 +50,7 @@ if not os.path.exists("models"):
     os.makedirs("models")
 
 cuda = False
-device = torch.device("cuda:0" if cuda and torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:0" if args.cuda and torch.cuda.is_available() else "cpu")
 print(device)
 
 # weigths for L1 loss
@@ -62,11 +67,11 @@ binedges = binedges
 lossweights = lossweights
 
 h, w = [32, 32]
-N = 2000
+N = args.N
 bs = 100
 lr = 2e-4
 wd = 0.
-epochs = 100
+epochs = args.e
 dpi = 400
 
 train_lab, test_lab = load_dataset(N, device)

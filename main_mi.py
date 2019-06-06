@@ -1,10 +1,9 @@
 import torch
 import torchvision
-
 import matplotlib.pyplot as plt
-
 from tqdm import tqdm
 import pytorch_colors as colors
+import argparse
 
 from im import *
 from model import *
@@ -18,6 +17,12 @@ def vae_loss(mu, logvar, pred, gt):
     kl_loss = - 0.5*(1 + logvar - mu.pow(2) - logvar.exp()).sum(dim=1).mean()
     recon_loss_l2 = mse(pred.reshape((bs, -1)), gt.reshape((bs, -1)))
     return kl_loss, recon_loss_l2
+
+parser = argparse.ArgumentParser(description="colorization")
+parser.add_argument("--cuda", action="store_true", help="enables CUDA training (default False)")
+parser.add_argument("--N", type=int, default=10, help="training samples (default 10)")
+parser.add_argument("--e", type=int, default=2, help="epochs (default 2)")
+args = parser.parse_args()
 
 seed_everything()
 
@@ -44,11 +49,11 @@ binedges = binedges
 lossweights = lossweights
 
 h, w = [32, 32]
-N = 2000
+N = args.N
 bs = 100
 lr = 2e-4
 wd = 0.
-epochs = 200
+epochs = args.e
 dpi = 400
 
 train_lab, test_lab = load_dataset(N, device)
