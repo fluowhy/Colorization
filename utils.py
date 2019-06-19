@@ -273,13 +273,6 @@ def unnormalize_and_lab_2_rgb(x):
 	return colors.lab_to_rgb(unnormalize_lab(x)).cpu().numpy()
 
 
-def loss_function(x_out, x, x_gray):
-	bs = x.shape[0]
-	mi_ch_a_g = mi(x_out[:, 0].reshape(bs, -1), x_gray.reshape(bs, -1), bw=2)
-	mi_ch_b_g = mi(x_out[:, 1].reshape(bs, -1), x_gray.reshape(bs, -1), bw=2)
-	return 1/mi_ch_a_g + 1/mi_ch_b_g
-
-
 def seed_everything(seed=1234):
 	"""
 	Author: Benjamin Minixhofer
@@ -298,7 +291,68 @@ def normalize_interval(x, p0, p1=[-1, 1]):
 
 
 def make_folder(dirs=["figures", "models"]):
-    for directory in dirs:
-        if not os.path.exists(directory):
-            os.makedirs(directory)
-    return
+	for directory in dirs:
+		if not os.path.exists(directory):
+			os.makedirs(directory)
+	return
+
+
+class AlphaEntropy(torch.nn.Module):
+	def __init__(self, sigma_zero, alpha=1.01):
+		super(AlphaEntropy, self).__init__()
+		self.sigma_zero = sigma_zero
+		self.alpha = alpha
+		self.epsilon = 1e-8
+		self.relu = torch.nn.ReLU()
+
+	def gaussian_gram(self, x, ns, nd):
+		if len(x.shape) == 1:
+			N = x.shape[0]
+			d = 1
+			x = x.reshape((N, d))
+		else:
+			N, d = x.shape
+		if ns:
+			x = self.normalize_scale(x)
+		sigma = self.sigma_zero * N ** (- 1 / (4 + d))
+		if nd:
+			sigma = sigma * np.sqrt(d)
+		A = (- 0.5 * (x.unsqueeze(1) - x.unsqueeze(0)).pow(2).sum(dim=2) / sigma ** 2).exp()
+		return A / A.trace()
+
+	def entropy(self, A):
+		eigenvalues, _ = torch.symeig(A, eigenvectors=True)
+		eigenvalues = self.relu(eigenvalues)
+		eigenvalues = eigenvalues / eigenvalues.sum()
+		S = eigenvalues.pow(self.alpha).sum().log() / (1 - self.alpha)
+		return S
+
+	def normalize_scale(self, x):
+		x_mean = x.mean(dim=0)
+		x_std = x.std(dim=0)
+		return (x - x_mean) / (x_std + self.epsilon)
+
+	def forward(self, x):
+		A = self.gaussian_gram(x)
+		S = self.entropy(A)
+		return S
+
+
+class MutualInformation(torch.nn.Module):
+	def __init__(self, sigma_zero, alpha=1.01, normalize_scale=True, normalize_dimension=True):
+		super(MutualInformation, self).__init__()
+		self.sigma_zero = sigma_zero
+		self.alpha = alpha
+		self.relu = torch.nn.ReLU()
+		self.alpha_entropy = AlphaEntropy(sigma_zero, alpha)
+		self.nor_scale = normalize_scale
+		self.nor_dim = normalize_dimension
+
+	def forward(self, x, y):
+		A_x = self.alpha_entropy.gaussian_gram(x, self.nor_scale, self.nor_dim)
+		A_y = self.alpha_entropy.gaussian_gram(y, self.nor_scale, self.nor_dim)
+		S_x = self.alpha_entropy.entropy(A_x)
+		S_y = self.alpha_entropy.entropy(A_y)
+		AxAy = A_x * A_y
+		S_xy = self.alpha_entropy.entropy(AxAy / AxAy.trace())
+		return S_x + S_y - S_xy

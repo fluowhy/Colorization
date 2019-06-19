@@ -18,6 +18,13 @@ def vae_loss(mu, logvar, pred, gt):
     recon_loss_l2 = mse(pred.reshape((bs, -1)), gt.reshape((bs, -1)))
     return kl_loss, recon_loss_l2
 
+
+def loss_function(x_out, x, x_gray):
+    bs = x.shape[0]
+    mi_ch_a_g = mutual_info(x_out[:, 0].reshape(bs, -1), x_gray.reshape(bs, -1))
+    mi_ch_b_g = mutual_info(x_out[:, 1].reshape(bs, -1), x_gray.reshape(bs, -1))
+    return 1/mi_ch_a_g + 1/mi_ch_b_g
+
 parser = argparse.ArgumentParser(description="colorization")
 parser.add_argument("--d", type=str, default="cpu", help="select device (default cpu)")
 parser.add_argument("--debug", action="store_true", help="select ot debugging state  (default False)")
@@ -48,7 +55,6 @@ lossweights = lossweights
 
 h, w = [32, 32]
 bs = 100
-lr = 2e-4
 wd = 0.
 dpi = 400
 
@@ -64,9 +70,10 @@ classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship'
 
 vae = VAE(2, device).to(device)
 print(count_parameters(vae))
-optimizer = torch.optim.Adam(vae.parameters(), lr=lr, weight_decay=wd)
+optimizer = torch.optim.Adam(vae.parameters(), lr=args.lr, weight_decay=wd)
 bce = torch.nn.BCELoss().to(device)
 mse = torch.nn.MSELoss().to(device)
+mutual_info = MutualInformation(2, 1.01, True, True).to(device)
 
 losses = np.zeros((args.e, 2))
 best_loss = np.inf
