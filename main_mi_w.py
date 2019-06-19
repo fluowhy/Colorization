@@ -95,7 +95,10 @@ testloader = torch.utils.data.DataLoader(test_lab_set, batch_size=bs, shuffle=Tr
 
 classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
 
-vae = VAE(2, device).to(device)
+if args.debug:
+    vae = VAE(2, device).to(device)
+else:
+    vae = VAE(16, device).to(device)
 print(count_parameters(vae))
 optimizer = torch.optim.Adam(vae.parameters(), lr=args.lr, weight_decay=wd)
 bce = torch.nn.BCELoss().to(device)
