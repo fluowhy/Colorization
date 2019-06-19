@@ -90,8 +90,8 @@ img_lossweights_test = torch.tensor(img_lossweights_test, dtype=torch.float, dev
 train_lab_set = torch.utils.data.TensorDataset(train_lab, img_lossweights_train)
 test_lab_set = torch.utils.data.TensorDataset(test_lab, img_lossweights_test)
 
-trainloader = torch.utils.data.DataLoader(train_lab_set, batch_size=bs, shuffle=True)
-testloader = torch.utils.data.DataLoader(test_lab_set, batch_size=bs, shuffle=True)
+trainloader = torch.utils.data.DataLoader(train_lab_set, batch_size=args.bs, shuffle=True)
+testloader = torch.utils.data.DataLoader(test_lab_set, batch_size=args.bs, shuffle=True)
 
 classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
 
@@ -107,7 +107,7 @@ mutual_info = MutualInformation(2, 1.01, True, True).to(device)
 
 losses = np.zeros((args.e, 2))
 best_loss = np.inf
-for epoch in range(epochs):
+for epoch in range(args.e):
     vae.train()
     train_loss_vae = 0
     for idx, (batch, img_weights) in enumerate(trainloader):
