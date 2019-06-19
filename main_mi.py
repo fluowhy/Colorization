@@ -19,20 +19,19 @@ def vae_loss(mu, logvar, pred, gt):
     return kl_loss, recon_loss_l2
 
 parser = argparse.ArgumentParser(description="colorization")
-parser.add_argument("--cuda", action="store_true", help="enables CUDA training (default False)")
-parser.add_argument("--N", type=int, default=10, help="training samples (default 10)")
+parser.add_argument("--d", type=str, default="cpu", help="select device (default cpu)")
+parser.add_argument("--debug", action="store_true", help="select ot debugging state  (default False)")
 parser.add_argument("--e", type=int, default=2, help="epochs (default 2)")
+parser.add_argument("--bs", type=int, default=20, help="batch size (default 20)")
+parser.add_argument("--lr", type=float, default=2e-4, help="learning rate (default 2e-4)")
+
 args = parser.parse_args()
+device = args.d
+print(device)
 
 seed_everything()
 
-if not os.path.exists("figures"):
-    os.makedirs("figures")
-if not os.path.exists("models"):
-    os.makedirs("models")
-
-device = torch.device("cuda:0" if args.cuda and torch.cuda.is_available() else "cpu")
-print(device)
+make_folder()
 
 # weigths for L1 loss
 
@@ -48,32 +47,30 @@ binedges = binedges
 lossweights = lossweights
 
 h, w = [32, 32]
-N = args.N
 bs = 100
 lr = 2e-4
 wd = 0.
-epochs = args.e
 dpi = 400
 
-train_lab, test_lab = load_dataset(N, device)
+train_lab, test_lab = load_dataset(debug=args.debug, N=10, device=device)
 
 train_lab_set = torch.utils.data.TensorDataset(train_lab)
 test_lab_set = torch.utils.data.TensorDataset(test_lab)
 
-trainloader = torch.utils.data.DataLoader(train_lab_set, batch_size=bs, shuffle=True)
-testloader = torch.utils.data.DataLoader(test_lab_set, batch_size=bs, shuffle=True)
+trainloader = torch.utils.data.DataLoader(train_lab_set, batch_size=args.bs, shuffle=True)
+testloader = torch.utils.data.DataLoader(test_lab_set, batch_size=args.bs, shuffle=True)
 
 classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
 
-vae = VAE(16, device).to(device)
+vae = VAE(2, device).to(device)
 print(count_parameters(vae))
 optimizer = torch.optim.Adam(vae.parameters(), lr=lr, weight_decay=wd)
 bce = torch.nn.BCELoss().to(device)
 mse = torch.nn.MSELoss().to(device)
 
-losses = np.zeros((epochs, 2))
+losses = np.zeros((args.e, 2))
 best_loss = np.inf
-for epoch in range(epochs):
+for epoch in range(args.e):
     vae.train()
     train_loss_vae = 0
     for idx, (batch) in enumerate(trainloader):

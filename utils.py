@@ -227,7 +227,7 @@ def gmmloss(mu, log_s2, w, z):
 	return (- torch.log(pr)).mean()
 
 
-def load_dataset(N, device="cpu", all=False):
+def load_dataset(debug, N=10, device="cpu"):
 	"""
 	load data from Cifar10.
 	Parameters
@@ -242,7 +242,7 @@ def load_dataset(N, device="cpu", all=False):
 
 	trainset = torchvision.datasets.CIFAR10(root="../datasets/cifar10/train", train=True, download=True)
 	testset = torchvision.datasets.CIFAR10(root="../datasets/cifar10/test", train=False, download=True)
-	if all:
+	if not debug:
 		train_tensor = torch.tensor(trainset.data, dtype=torch.float, device="cpu") / 255
 		test_tensor = torch.tensor(testset.data, dtype=torch.float, device="cpu") / 255
 	else:
@@ -295,3 +295,10 @@ def seed_everything(seed=1234):
 
 def normalize_interval(x, p0, p1=[-1, 1]):
 	return (x - p0[0])*(p1[1] - p0[1])/(p1[0] - p0[0]) + p0[1]
+
+
+def make_folder(dirs=["figures", "models"]):
+    for directory in dirs:
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+    return
