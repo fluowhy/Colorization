@@ -1,0 +1,2 @@
+trainset = torchvision.datasets.CIFAR10(root="../datasets/cifar10/train", train=True, download=True)
+	testset = torchvision.datasets.CIFAR10(root="../datasets/cifar10/test", train=False, download=True)
