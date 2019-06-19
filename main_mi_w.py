@@ -80,9 +80,9 @@ train_lab, test_lab = load_dataset(debug=args.debug, N=10, device=device)
 
 img_lossweights_train = np.zeros((train_lab.shape[0], 2, 32, 32))
 img_lossweights_test = np.zeros((test_lab.shape[0], 2, 32, 32))
-for i, img in enumerate(train_lab):
+for i, img in tqdm(enumerate(train_lab)):
     img_lossweights_train[i] = getweights(img[1:].cpu().numpy())
-for i, img in enumerate(test_lab):
+for i, img in tqdm(enumerate(test_lab)):
     img_lossweights_test[i] = getweights(img[1:].cpu().numpy())
 img_lossweights_train = torch.tensor(img_lossweights_train, dtype=torch.float, device=device)
 img_lossweights_test = torch.tensor(img_lossweights_test, dtype=torch.float, device=device)
@@ -110,7 +110,7 @@ best_loss = np.inf
 for epoch in range(args.e):
     vae.train()
     train_loss_vae = 0
-    for idx, (batch, img_weights) in enumerate(trainloader):
+    for idx, (batch, img_weights) in tqdm(enumerate(trainloader)):
         cL = batch[:, 0].unsqueeze(1)
         cab = batch[:, 1:]
         optimizer.zero_grad()
@@ -125,7 +125,7 @@ for epoch in range(args.e):
     vae.eval()
     test_loss_vae = 0
     with torch.no_grad():
-        for idx, (batch, img_weights) in enumerate(testloader):
+        for idx, (batch, img_weights) in tqdm(enumerate(testloader)):
             cL = batch[:, 0].unsqueeze(1)
             cab = batch[:, 1:]
             mu, logvar, color_out = vae(cab, cL)
