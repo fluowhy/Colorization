@@ -7,7 +7,8 @@ from utils import *
 if __name__=="__main__":
     parser = argparse.ArgumentParser(description="colorization")
     parser.add_argument("--debug", action="store_true", help="select debugging state (default False)")
-    parser.add_argument("--dataset", type=str, default="cifar10" help="select dataset cifar10 stl10 vocdet (default cifar10)")
+    parser.add_argument("--dataset", type=str, default="cifar10", help="select dataset cifar10 stl10 vocdet (default "
+                                                                       "cifar10)")
 
     device = "cpu"
     args = parser.parse_args()
