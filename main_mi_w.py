@@ -33,6 +33,7 @@ parser.add_argument("--debug", action="store_true", help="select ot debugging st
 parser.add_argument("--e", type=int, default=2, help="epochs (default 2)")
 parser.add_argument("--bs", type=int, default=20, help="batch size (default 20)")
 parser.add_argument("--lr", type=float, default=2e-4, help="learning rate (default 2e-4)")
+parser.add_argument("--pre", action="store_true", help="load pretrained model  (default False)")
 
 args = parser.parse_args()
 device = args.d
@@ -87,6 +88,8 @@ if args.debug:
     vae = VAE(2, device).to(device)
 else:
     vae = VAE(16, device).to(device)
+if args.pre:
+    vae.load_state_dict(torch.load("models/vae_mi.pth"))
 print(count_parameters(vae))
 optimizer = torch.optim.Adam(vae.parameters(), lr=args.lr, weight_decay=wd)
 bce = torch.nn.BCELoss().to(device)
