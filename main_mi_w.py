@@ -27,23 +27,6 @@ def loss_function(x_out, x, x_gray):
     return 1/mi_ch_a_g + 1/mi_ch_b_g
 
 
-def getweights(img):
-    _, h, w = img.shape
-    img_vec = img.reshape(-1)
-    img_vec = img_vec * 128.
-    img_lossweights = np.zeros(img.shape, dtype='f')
-    img_vec_a = img_vec[:h*w]
-    binedges_a = binedges[0, ...].reshape(-1)
-    binid_a = [binedges_a.flat[np.abs(binedges_a - v).argmin()] for v in img_vec_a]
-    img_vec_b = img_vec[h*w:]
-    binedges_b = binedges[1, ...].reshape(-1)
-    binid_b = [binedges_b.flat[np.abs(binedges_b - v).argmin()] for v in img_vec_b]
-    binweights = np.array([lossweights[v1][v2] for v1, v2 in zip(binid_a, binid_b)])
-    img_lossweights[0, :, :] = binweights.reshape(h, w)
-    img_lossweights[1, :, :] = binweights.reshape(h, w)
-    return img_lossweights
-
-
 parser = argparse.ArgumentParser(description="colorization")
 parser.add_argument("--d", type=str, default="cpu", help="select device (default cpu)")
 parser.add_argument("--debug", action="store_true", help="select ot debugging state  (default False)")
@@ -76,14 +59,19 @@ h, w = [32, 32]
 wd = 0.
 dpi = 400
 
-train_lab, test_lab = load_dataset(debug=args.debug, N=10, device=device)
+name = "cifar10"
 
-img_lossweights_train = np.zeros((train_lab.shape[0], 2, 32, 32))
-img_lossweights_test = np.zeros((test_lab.shape[0], 2, 32, 32))
-for i, img in tqdm(enumerate(train_lab)):
-    img_lossweights_train[i] = getweights(img[1:].cpu().numpy())
-for i, img in tqdm(enumerate(test_lab)):
-    img_lossweights_test[i] = getweights(img[1:].cpu().numpy())
+train_lab, test_lab = load_dataset(debug=args.debug, N=10, device=device, name=name)
+
+# load image weights
+
+if args.debug:
+    img_lossweights_train = np.load("lossweights_train_{}_{}.npy".format(name, "debug"))
+    img_lossweights_test = np.load("lossweights_test_{}_{}.npy".format(name, "debug"))
+else:
+    img_lossweights_train = np.load("lossweights_train_{}.npy".format(name))
+    img_lossweights_test = np.load("lossweights_test_{}.npy".format(name))
+
 img_lossweights_train = torch.tensor(img_lossweights_train, dtype=torch.float, device=device)
 img_lossweights_test = torch.tensor(img_lossweights_test, dtype=torch.float, device=device)
 

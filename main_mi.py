@@ -67,7 +67,10 @@ testloader = torch.utils.data.DataLoader(test_lab_set, batch_size=args.bs, shuff
 
 classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
 
-vae = VAE(2, device).to(device)
+if args.debug:
+    vae = VAE(2, device).to(device)
+else:
+    vae = VAE(16, device).to(device)
 print(count_parameters(vae))
 optimizer = torch.optim.Adam(vae.parameters(), lr=args.lr, weight_decay=wd)
 bce = torch.nn.BCELoss().to(device)
@@ -79,7 +82,7 @@ best_loss = np.inf
 for epoch in range(args.e):
     vae.train()
     train_loss_vae = 0
-    for idx, (batch) in enumerate(trainloader):
+    for idx, (batch) in tqdm(enumerate(trainloader)):
         batch = batch[0]
         cL = batch[:, 0].unsqueeze(1)
         cab = batch[:, 1:]
@@ -95,7 +98,7 @@ for epoch in range(args.e):
     vae.eval()
     test_loss_vae = 0
     with torch.no_grad():
-        for idx, (batch) in enumerate(testloader):
+        for idx, (batch) in tqdm(enumerate(testloader)):
             batch = batch[0]
             cL = batch[:, 0].unsqueeze(1)
             cab = batch[:, 1:]

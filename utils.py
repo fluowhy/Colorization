@@ -227,7 +227,7 @@ def gmmloss(mu, log_s2, w, z):
 	return (- torch.log(pr)).mean()
 
 
-def load_dataset(debug, N=10, device="cpu"):
+def load_dataset(debug, N=10, device="cpu", name="cifar10"):
 	"""
 	load data from Cifar10.
 	Parameters
@@ -356,3 +356,20 @@ class MutualInformation(torch.nn.Module):
 		AxAy = A_x * A_y
 		S_xy = self.alpha_entropy.entropy(AxAy / AxAy.trace())
 		return S_x + S_y - S_xy
+
+
+def getweights(img, binedges, lossweights):
+	_, h, w = img.shape
+	img_vec = img.reshape(-1)
+	img_vec = img_vec * 128.
+	img_lossweights = np.zeros(img.shape, dtype='f')
+	img_vec_a = img_vec[:h*w]
+	binedges_a = binedges[0, ...].reshape(-1)
+	binid_a = [binedges_a.flat[np.abs(binedges_a - v).argmin()] for v in img_vec_a]
+	img_vec_b = img_vec[h*w:]
+	binedges_b = binedges[1, ...].reshape(-1)
+	binid_b = [binedges_b.flat[np.abs(binedges_b - v).argmin()] for v in img_vec_b]
+	binweights = np.array([lossweights[v1][v2] for v1, v2 in zip(binid_a, binid_b)])
+	img_lossweights[0, :, :] = binweights.reshape(h, w)
+	img_lossweights[1, :, :] = binweights.reshape(h, w)
+	return img_lossweights
