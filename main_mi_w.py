@@ -76,7 +76,7 @@ h, w = [32, 32]
 wd = 0.
 dpi = 400
 
-train_lab, test_lab = load_dataset(N, device)
+train_lab, test_lab = load_dataset(debug=args.debug, N=10, device=device)
 
 img_lossweights_train = np.zeros((N, 2, 32, 32))
 img_lossweights_test = np.zeros((N, 2, 32, 32))
