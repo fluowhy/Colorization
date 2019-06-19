@@ -78,8 +78,8 @@ dpi = 400
 
 train_lab, test_lab = load_dataset(debug=args.debug, N=10, device=device)
 
-img_lossweights_train = np.zeros((N, 2, 32, 32))
-img_lossweights_test = np.zeros((N, 2, 32, 32))
+img_lossweights_train = np.zeros((train_lab.shape[0], 2, 32, 32))
+img_lossweights_test = np.zeros((test_lab.shape[0], 2, 32, 32))
 for i, img in enumerate(train_lab):
     img_lossweights_train[i] = getweights(img[1:].cpu().numpy())
 for i, img in enumerate(test_lab):
