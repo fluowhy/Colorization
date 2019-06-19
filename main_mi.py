@@ -54,7 +54,6 @@ binedges = binedges
 lossweights = lossweights
 
 h, w = [32, 32]
-bs = 100
 wd = 0.
 dpi = 400
 
