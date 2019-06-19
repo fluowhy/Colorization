@@ -6,7 +6,8 @@ from utils import *
 
 if __name__=="__main__":
     parser = argparse.ArgumentParser(description="colorization")
-    parser.add_argument("--debug", action="store_true", help="select ot debugging state  (default False)")
+    parser.add_argument("--debug", action="store_true", help="select debugging state (default False)")
+    parser.add_argument("--dataset", type=str, default="cifar10" help="select dataset cifar10 stl10 vocdet (default cifar10)")
 
     device = "cpu"
     args = parser.parse_args()
@@ -23,7 +24,7 @@ if __name__=="__main__":
         lossweights[binedges[0, i]][binedges[1, i]] = countbins[i]
 
     # load dataset
-    name = "cifar10"
+    name = args.dataset
     train_lab, test_lab = load_dataset(debug=args.debug, N=10, device=device, name=name)
 
     # compute image weights
