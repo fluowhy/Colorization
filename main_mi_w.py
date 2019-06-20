@@ -62,7 +62,7 @@ dpi = 400
 
 name = "cifar10"
 
-train_lab, test_lab = load_dataset(debug=args.debug, N=10, device=device, name=name)
+train_lab, test_lab, _ = load_dataset(debug=args.debug, N=10, device=device, name=name)
 
 # load image weights
 

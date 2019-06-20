@@ -239,24 +239,43 @@ def load_dataset(debug, N=10, device="cpu", name="cifar10"):
 	-------
 	Torch tensors from train and test sets.
 	"""
-
-	trainset = torchvision.datasets.CIFAR10(root="../datasets/cifar10/train", train=True, download=True)
-	testset = torchvision.datasets.CIFAR10(root="../datasets/cifar10/test", train=False, download=True)
-	if not debug:
-		train_tensor = torch.tensor(trainset.data, dtype=torch.float, device="cpu") / 255
-		test_tensor = torch.tensor(testset.data, dtype=torch.float, device="cpu") / 255
+	if name == "stl10":
+		trainset = torchvision.datasets.STL10(root="../datasets/{}/train".format(name), split="train", download=True)
+		testset = torchvision.datasets.STL10(root="../datasets/{}/test".format(name), split="test", download=True)
+		unlabeledset = torchvision.datasets.STL10(root="../datasets/{}/unlabeled".format(name), split="unlabeled", download=True)
+		if not debug:
+			train_tensor = torch.tensor(trainset.data, dtype=torch.float, device="cpu") / 255
+			test_tensor = torch.tensor(testset.data, dtype=torch.float, device="cpu") / 255
+			unlabeled_tensor = torch.tensor(unlabeledset.data, dtype=torch.float, device="cpu") / 255
+		else:
+			train_tensor = torch.tensor(trainset.data[:N], dtype=torch.float, device="cpu") / 255.
+			test_tensor = torch.tensor(testset.data[:N], dtype=torch.float, device="cpu") / 255.
+			unlabeled_tensor = torch.tensor(unlabeledset.data[:N], dtype=torch.float, device="cpu") / 255
+		train_lab = colors.rgb_to_lab(train_tensor)
+		test_lab = colors.rgb_to_lab(test_tensor)
+		unlabeled_lab = colors.rgb_to_lab(unlabeled_tensor)
+		train_lab = normalize_lab(train_lab).to(device)
+		test_lab = normalize_lab(test_lab).to(device)
+		unlabeled_lab = normalize_lab(unlabeled_lab).to(device)
+		return train_lab, test_lab, unlabeled_lab
 	else:
-		train_tensor = torch.tensor(trainset.data[:N], dtype=torch.float, device="cpu") / 255.
-		test_tensor = torch.tensor(testset.data[:N], dtype=torch.float, device="cpu") / 255.
-	train_tensor = train_tensor.transpose(1, -1)
-	train_tensor = train_tensor.transpose(-1, -2)
-	test_tensor = test_tensor.transpose(1, -1)
-	test_tensor = test_tensor.transpose(-1, -2)
-	train_lab = colors.rgb_to_lab(train_tensor)
-	test_lab = colors.rgb_to_lab(test_tensor)
-	train_lab = normalize_lab(train_lab).to(device)
-	test_lab = normalize_lab(test_lab).to(device)
-	return train_lab, test_lab
+		trainset = torchvision.datasets.CIFAR10(root="../datasets/{}/train".format(name), train=True, download=True)
+		testset = torchvision.datasets.CIFAR10(root="../datasets/{}/test".format(name), train=False, download=True)
+		if not debug:
+			train_tensor = torch.tensor(trainset.data, dtype=torch.float, device="cpu") / 255
+			test_tensor = torch.tensor(testset.data, dtype=torch.float, device="cpu") / 255
+		else:
+			train_tensor = torch.tensor(trainset.data[:N], dtype=torch.float, device="cpu") / 255.
+			test_tensor = torch.tensor(testset.data[:N], dtype=torch.float, device="cpu") / 255.
+		train_tensor = train_tensor.transpose(1, -1)
+		train_tensor = train_tensor.transpose(-1, -2)
+		test_tensor = test_tensor.transpose(1, -1)
+		test_tensor = test_tensor.transpose(-1, -2)
+		train_lab = colors.rgb_to_lab(train_tensor)
+		test_lab = colors.rgb_to_lab(test_tensor)
+		train_lab = normalize_lab(train_lab).to(device)
+		test_lab = normalize_lab(test_lab).to(device)
+		return train_lab, test_lab, 0
 
 
 def unnormalize_and_lab_2_rgb(x):
