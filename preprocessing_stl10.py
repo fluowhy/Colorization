@@ -70,9 +70,9 @@ if __name__=="__main__":
     args = parser.parse_args()
     N = 10
 
-    trainset = torchvision.datasets.STL10(root="../datasets/stl10/train", split="train", download=True)
-    testset = torchvision.datasets.STL10(root="../datasets/stl10/test", split="test", download=True)
-    unlabeledset = torchvision.datasets.STL10(root="../datasets/stl10/unlabeled", split="unlabeled", download=True)
+    trainset = torchvision.datasets.STL10(root="../datasets/stl10/train", split="train", download=False)
+    testset = torchvision.datasets.STL10(root="../datasets/stl10/test", split="test", download=False)
+    unlabeledset = torchvision.datasets.STL10(root="../datasets/stl10/unlabeled", split="unlabeled", download=False)
     if not args.debug:
         train_tensor = torch.tensor(trainset.data, device="cpu")
         test_tensor = torch.tensor(testset.data, device="cpu")
