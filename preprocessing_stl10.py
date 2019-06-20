@@ -36,30 +36,31 @@ def compute_image_weights(image_numpy, setname):
     return
 
 
-def load_split_convert(train_tensor, test_tensor):
+def load_split_convert(train_tensor, test_tensor, unlabeled_tensor):
     # train val split
 
-    indexes = np.arange(train_tensor.shape[0])
-    N = train_tensor.shape[0] + test_tensor.shape[0]
+    indexes = np.arange(unlabeled_tensor.shape[0])
 
-    train_idx, val_idx = train_test_split(indexes, test_size=0.1)
+    train_idx, val_idx = train_test_split(indexes, test_size=8/100)
 
-    print("train: {:.2f}".format(len(train_idx) / N))
-    print("test: {:.2f}".format(test_tensor.shape[0] / N))
-    print("val: {:.2f}".format(len(val_idx) / N))
+    new_train_tensor = torch.cat((train_tensor, unlabeled_tensor[val_idx]))
+
+    print("train: {:.0f}".format(new_train_tensor.shape[0]))
+    print("test: {:.0f}".format(test_tensor.shape[0]))
+    print("val: {:.0f}".format(len(val_idx)))
 
     # save sets as (N, C, h, w)
-    np.save("../datasets/cifar10/train", train_tensor[train_idx].numpy())
-    np.save("../datasets/cifar10/val", train_tensor[val_idx].numpy())
-    np.save("../datasets/cifar10/test", test_tensor.numpy())
+    np.save("../datasets/stl10/train", new_train_tensor.numpy())
+    np.save("../datasets/stl10/val", unlabeled_tensor[val_idx].numpy())
+    np.save("../datasets/stl10/test", test_tensor.numpy())
 
     # convert to lab color space and save
     train_lab = rgb2lab(train_tensor[train_idx])
     val_lab = rgb2lab(train_tensor[val_idx])
     test_lab = rgb2lab(test_tensor)
-    np.save("../datasets/cifar10/train_lab", train_lab)
-    np.save("../datasets/cifar10/val_lab", val_lab)
-    np.save("../datasets/cifar10/test_lab", test_lab)
+    np.save("../datasets/stl10/train_lab", train_lab)
+    np.save("../datasets/stl10/val_lab", val_lab)
+    np.save("../datasets/stl10/test_lab", test_lab)
     return train_lab, val_lab, test_lab
 
 
@@ -82,7 +83,7 @@ if __name__=="__main__":
         test_tensor = torch.tensor(testset.data[:N], device="cpu")
         unlabeled_tensor = torch.tensor(unlabeledset.data[:N], device="cpu")
     pdb.set_trace()
-    train_lab, val_lab, test_lab = load_split_convert(train_tensor, test_tensor)
+    train_lab, val_lab, test_lab = load_split_convert(train_tensor, test_tensor, unlabeled_tensor)
     """
     compute_image_weights(train_lab.astype(np.float32), "train")
     compute_image_weights(val_lab.astype(np.float32), "val")

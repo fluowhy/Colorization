@@ -114,7 +114,7 @@ optimizer = torch.optim.Adam(vae.parameters(), lr=args.lr, weight_decay=wd)
 bce = torch.nn.BCELoss().to(device)
 mse = torch.nn.MSELoss().to(device)
 mutual_info = MutualInformation(2, 1.01, True, True).to(device)
-lam = 0.1
+lam = 1
 
 losses = np.zeros((args.e, 2))
 best_loss = np.inf
