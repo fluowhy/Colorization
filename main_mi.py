@@ -162,12 +162,12 @@ UN = UnNormalize()
 vae.load_state_dict(torch.load("models/vae_mi.pth"))
 n = 8
 l = 5
-selected = np.random.choice(train_lab.shape[0], size=n, replace=False)
+selected = np.random.choice(test_lab.shape[0], size=n, replace=False)
 vae.eval()
 img_lab = torch.zeros((n, 3, h, w), dtype=torch.float, device=device)
-img_gt_rgb = np.load("../datasets/cifar10/train.npy")[selected]
+img_gt_rgb = np.load("../datasets/cifar10/test.npy")[selected]
 with torch.no_grad():
-    cl, cab = transform(train_lab[selected])
+    cl, cab = transform(test_lab[selected])
     _, _, ab = vae(cab, cl)
     img_lab[:, 1:] = ab
     img_lab[:, 0] = cl.squeeze()
