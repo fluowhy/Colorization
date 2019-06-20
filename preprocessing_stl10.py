@@ -48,15 +48,15 @@ def load_split_convert(train_tensor, test_tensor, unlabeled_tensor):
     print("train: {:.0f}".format(new_train_tensor.shape[0]))
     print("test: {:.0f}".format(test_tensor.shape[0]))
     print("val: {:.0f}".format(len(val_idx)))
-
+    pdb.set_trace()
     # save sets as (N, C, h, w)
     np.save("../datasets/stl10/train", new_train_tensor.numpy())
     np.save("../datasets/stl10/val", unlabeled_tensor[val_idx].numpy())
     np.save("../datasets/stl10/test", test_tensor.numpy())
 
     # convert to lab color space and save
-    train_lab = rgb2lab(train_tensor[train_idx])
-    val_lab = rgb2lab(train_tensor[val_idx])
+    train_lab = rgb2lab(new_train_tensor)
+    val_lab = rgb2lab(unlabeled_tensor[val_idx])
     test_lab = rgb2lab(test_tensor)
     np.save("../datasets/stl10/train_lab", train_lab)
     np.save("../datasets/stl10/val_lab", val_lab)
@@ -82,7 +82,7 @@ if __name__=="__main__":
         train_tensor = torch.tensor(trainset.data[:N], device="cpu")
         test_tensor = torch.tensor(testset.data[:N], device="cpu")
         unlabeled_tensor = torch.tensor(unlabeledset.data[:N], device="cpu")
-    pdb.set_trace()
+
     train_lab, val_lab, test_lab = load_split_convert(train_tensor, test_tensor, unlabeled_tensor)
     """
     compute_image_weights(train_lab.astype(np.float32), "train")
