@@ -43,48 +43,49 @@ def load_split_convert(train_tensor, test_tensor, unlabeled_tensor):
 
     train_idx, val_idx = train_test_split(indexes, test_size=8/100)
 
-    new_train_tensor = torch.cat((train_tensor.cpu(), unlabeled_tensor[train_idx].cpu()))
+    new_train_tensor = torch.cat((train_tensor, unlabeled_tensor[train_idx]))
 
     print("train: {:.0f}".format(new_train_tensor.shape[0]))
     print("test: {:.0f}".format(test_tensor.shape[0]))
     print("val: {:.0f}".format(len(val_idx)))
 
     # save sets as (N, C, h, w)
-    np.save("../datasets/stl10/train", new_train_tensor.cpu().numpy())
-    np.save("../datasets/stl10/val", unlabeled_tensor[val_idx].cpu().numpy())
-    np.save("../datasets/stl10/test", test_tensor.cpu().numpy())
+    np.save("../datasets/stl10/train", new_train_tensor.numpy())
+    np.save("../datasets/stl10/val", unlabeled_tensor[val_idx].numpy())
+    np.save("../datasets/stl10/test", test_tensor.numpy())
 
     # convert to lab color space and save
-    train_lab = rgb2lab(new_train_tensor.cpu())
-    val_lab = rgb2lab(unlabeled_tensor[val_idx].cpu())
-    test_lab = rgb2lab(test_tensor.cpu())
+    new_train_lab = np.zeros((new_train_tensor))
+    train_lab = rgb2lab(new_train_tensor)
+    val_lab = rgb2lab(unlabeled_tensor[val_idx])
+    test_lab = rgb2lab(test_tensor)
     np.save("../datasets/stl10/train_lab", train_lab)
     np.save("../datasets/stl10/val_lab", val_lab)
     np.save("../datasets/stl10/test_lab", test_lab)
-    return train_lab, val_lab, test_lab
+    return
 
+
+def new_load_convert(debug, split="train"):
+    N = 10
+    dataset = torchvision.datasets.STL10(root="../datasets/stl10/{}".format(split), split=split, download=False)
+    # save sets as (N, C, h, w)
+    if not debug:
+        np.save("../datasets/stl10/{}".format(split), dataset.data[:N].numpy())
+        np.save("../datasets/stl10/{}_lab".format(split), rgb2lab(dataset.data[:N]))
+    else:
+        np.save("../datasets/stl10/{}".format(split), dataset.data.numpy())
+        np.save("../datasets/stl10/{}_lab".format(split), rgb2lab(dataset.data))
+    return
 
 if __name__=="__main__":
     parser = argparse.ArgumentParser(description="colorization")
     parser.add_argument("--debug", action="store_true", help="select debugging state (default False)")
-    parser.add_argument("--d", type=str, default="cpu", help="select device (default cpu")
 
     args = parser.parse_args()
-    N = 10
 
-    trainset = torchvision.datasets.STL10(root="../datasets/stl10/train", split="train", download=False)
-    testset = torchvision.datasets.STL10(root="../datasets/stl10/test", split="test", download=False)
-    unlabeledset = torchvision.datasets.STL10(root="../datasets/stl10/unlabeled", split="unlabeled", download=False)
-    if not args.debug:
-        train_tensor = torch.tensor(trainset.data, device=args.d)
-        test_tensor = torch.tensor(testset.data, device=args.d)
-        unlabeled_tensor = torch.tensor(unlabeledset.data, device=args.d)
-    else:
-        train_tensor = torch.tensor(trainset.data[:N], device=args.d)
-        test_tensor = torch.tensor(testset.data[:N], device=args.d)
-        unlabeled_tensor = torch.tensor(unlabeledset.data[:N], device=args.d)
-
-    train_lab, val_lab, test_lab = load_split_convert(train_tensor, test_tensor, unlabeled_tensor)
+    new_load_convert(args.debug, split="train")
+    new_load_convert(args.debug, split="test")
+    new_load_convert(args.debug, split="unlabeled")
     """
     compute_image_weights(train_lab.astype(np.float32), "train")
     compute_image_weights(val_lab.astype(np.float32), "val")
