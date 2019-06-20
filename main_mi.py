@@ -114,6 +114,7 @@ optimizer = torch.optim.Adam(vae.parameters(), lr=args.lr, weight_decay=wd)
 bce = torch.nn.BCELoss().to(device)
 mse = torch.nn.MSELoss().to(device)
 mutual_info = MutualInformation(2, 1.01, True, True).to(device)
+lam = 0.1
 
 losses = np.zeros((args.e, 2))
 best_loss = np.inf
@@ -126,7 +127,7 @@ for epoch in range(args.e):
         mu, logvar, color_out = vae(cab, cl)
         mi_loss = loss_function(color_out, cab, cl)
         kl_loss, recon_loss_l2 = vae_loss(mu, logvar, color_out, cab)
-        loss_vae = (kl_loss + recon_loss_l2 + mi_loss)
+        loss_vae = kl_loss + recon_loss_l2 + lam * mi_loss
         loss_vae.backward()
         optimizer.step()
         train_loss_vae += loss_vae.item()
@@ -139,7 +140,7 @@ for epoch in range(args.e):
             mu, logvar, color_out = vae(cab, cl)
             mi_loss = loss_function(color_out, cab, cl)
             kl_loss, recon_loss_l2 = vae_loss(mu, logvar, color_out, cab)
-            loss_vae = (kl_loss + recon_loss_l2 + mi_loss)
+            loss_vae = kl_loss + recon_loss_l2 + lam * mi_loss
             test_loss_vae += loss_vae.item()
     test_loss_vae /= (idx + 1)
     print("Epoch {} vae train loss {:.3f} test loss {:.3f}".format(epoch, train_loss_vae, test_loss_vae))
