@@ -43,12 +43,12 @@ def load_split_convert(train_tensor, test_tensor, unlabeled_tensor):
 
     train_idx, val_idx = train_test_split(indexes, test_size=8/100)
 
-    new_train_tensor = torch.cat((train_tensor, unlabeled_tensor[val_idx]))
+    new_train_tensor = torch.cat((train_tensor, unlabeled_tensor[train_idx]))
 
     print("train: {:.0f}".format(new_train_tensor.shape[0]))
     print("test: {:.0f}".format(test_tensor.shape[0]))
     print("val: {:.0f}".format(len(val_idx)))
-    
+
     # save sets as (N, C, h, w)
     np.save("../datasets/stl10/train", new_train_tensor.numpy())
     np.save("../datasets/stl10/val", unlabeled_tensor[val_idx].numpy())
