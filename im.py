@@ -1,8 +1,6 @@
 import torch
-#import pytorch_colors as colors
 import numpy as np
 import matplotlib.pyplot as plt
-import cv2
 
 
 def uint8_2_float(x):
