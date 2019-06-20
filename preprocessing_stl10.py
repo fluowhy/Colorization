@@ -82,10 +82,30 @@ if __name__=="__main__":
     parser.add_argument("--debug", action="store_true", help="select debugging state (default False)")
 
     args = parser.parse_args()
-
+    """
     new_load_convert(args.debug, split="train")
     new_load_convert(args.debug, split="test")
     new_load_convert(args.debug, split="unlabeled")
+    """
+
+    # first split rgb
+    train_data = np.load("../datasets/stl10/train.npy")
+    unlabeled_data = np.load("../datasets/stl10/unlabeled.npy")
+
+    indexes = np.arange(unlabeled_data.shape[0])
+
+    train_idx, val_idx = train_test_split(indexes, test_size=8 / 100)
+
+    np.save("../datasets/stl10/train_rgb", np.vstack((train_data, unlabeled_data[train_idx])))
+    np.save("../datasets/stl10/val_rgb", unlabeled_data[val_idx])
+
+    # now lab images
+    train_data = np.load("../datasets/stl10/train_lab.npy")
+    unlabeled_data = np.load("../datasets/stl10/unlabeled_lab.npy")
+
+    np.save("../datasets/stl10/train_lab_1", np.vstack((train_data, unlabeled_data[train_idx])))
+    np.save("../datasets/stl10/val_lab_1", unlabeled_data[val_idx])
+
     """
     compute_image_weights(train_lab.astype(np.float32), "train")
     compute_image_weights(val_lab.astype(np.float32), "val")
