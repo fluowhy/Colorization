@@ -13,10 +13,10 @@ torchvision.datasets.VOCSegmentation(root="../datasets/vocseg/test", image_set="
 """
 torchvision.datasets.STL10(root="../datasets/stl10/train", split="train", download=True)
 torchvision.datasets.STL10(root="../datasets/stl10/test", split="test", download=True)
-torchvision.datasets.STL10(root="../datasets/stl10/unlabeled", split="unlabeled", download=True)
+# torchvision.datasets.STL10(root="../datasets/stl10/unlabeled", split="unlabeled", download=True)
 
-torchvision.datasets.CIFAR10(root="../datasets/cifar10/train", train=True, download=True)
-torchvision.datasets.CIFAR10(root="../datasets/cifar10/test", train=False, download=True)
+# torchvision.datasets.CIFAR10(root="../datasets/cifar10/train", train=True, download=True)
+# torchvision.datasets.CIFAR10(root="../datasets/cifar10/test", train=False, download=True)
 
-torchvision.datasets.CIFAR100(root="../datasets/cifar100/train", train=True, download=True)
-torchvision.datasets.CIFAR100(root="../datasets/cifar100/train", train=False, download=True)
+# torchvision.datasets.CIFAR100(root="../datasets/cifar100/train", train=True, download=True)
+# torchvision.datasets.CIFAR100(root="../datasets/cifar100/train", train=False, download=True)

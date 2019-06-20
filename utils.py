@@ -4,8 +4,42 @@ import numpy as np
 import matplotlib.pyplot as plt
 import random
 import os
+import skimage
 
 from im import *
+
+
+def rgb2lab(x):
+    """
+
+    Parameters
+    ----------
+    x : torch.tensor uint8 (N, c, h, w)
+        image to be transformed
+    Returns
+    -------
+     : numpy array int8 (N, c, h, w)
+        image in lab color space
+    """
+    return np.transpose(skimage.color.rgb2lab(x.transpose(1, 2).transpose(2, 3).numpy()).astype(np.int8), (0, 3, 1, 2))
+
+
+def lab2rgb(x):
+	"""
+
+	Parameters
+	----------
+	x : torch.tensor float (N, c, h, w)
+		image to be transformed
+	Returns
+	-------
+	 : numpy array uint8 (N, c, h, w)
+		image in lab color space
+	"""
+	for i in range(x.shape[0]):
+		x.cpu()
+		x[i] = torch.as_tensor(np.transpose(skimage.color.lab2rgb(np.transpose(x[i].cpu().numpy(), (1, 2, 0))), (2, 0, 1)))
+	return (x.cpu().numpy()*255.).astype(np.uint8)
 
 
 def save_or_not(test_loss, best_loss, model, savename):

@@ -37,6 +37,7 @@ parser.add_argument("--pre", action="store_true", help="load pretrained model  (
 
 args = parser.parse_args()
 device = args.d
+print(args)
 print(device)
 
 seed_everything()

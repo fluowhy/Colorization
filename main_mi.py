@@ -2,7 +2,6 @@ import torch
 import torchvision
 import matplotlib.pyplot as plt
 from tqdm import tqdm
-import pytorch_colors as colors
 import argparse
 
 from im import *
@@ -10,6 +9,48 @@ from model import *
 from utils import *
 from vae import *
 from mdn import *
+
+
+class Normalize(object):
+    """Crop randomly the image in a sample.
+
+    Args:
+        output_size (tuple or int): Desired output size. If int, square crop
+            is made.
+    """
+
+    def __init__(self):
+        self.l = [0., 100.]
+        self.ab = [- 128., 127.]
+
+    def __call__(self, img):
+        return normalize(img[:, 0], self.l).unsqueeze(1), normalize(img[:, 1:], self.ab)
+
+
+class UnNormalize(object):
+    """Crop randomly the image in a sample.
+
+    Args:
+        output_size (tuple or int): Desired output size. If int, square crop
+            is made.
+    """
+
+    def __init__(self):
+        self.l = [0., 100.]
+        self.ab = [- 128., 127.]
+
+    def __call__(self, img):
+        img[:, 0] = unnormalize(img[:, 0], self.l)
+        img[:, 1:] = unnormalize(img[:, 1:], self.ab)
+        return img
+
+
+class ToType(object):
+    def __init__(self, dtype):
+        self.dtype = dtype
+
+    def __call__(self, img):
+        return img.type(dtype=self.dtype)
 
 
 def vae_loss(mu, logvar, pred, gt):
@@ -25,45 +66,42 @@ def loss_function(x_out, x, x_gray):
     mi_ch_b_g = mutual_info(x_out[:, 1].reshape(bs, -1), x_gray.reshape(bs, -1))
     return 1/mi_ch_a_g + 1/mi_ch_b_g
 
+
 parser = argparse.ArgumentParser(description="colorization")
 parser.add_argument("--d", type=str, default="cpu", help="select device (default cpu)")
 parser.add_argument("--debug", action="store_true", help="select ot debugging state  (default False)")
 parser.add_argument("--e", type=int, default=2, help="epochs (default 2)")
 parser.add_argument("--bs", type=int, default=20, help="batch size (default 20)")
 parser.add_argument("--lr", type=float, default=2e-4, help="learning rate (default 2e-4)")
+parser.add_argument("--pre", action="store_true", help="load pretrained model  (default False)")
 
 args = parser.parse_args()
 device = args.d
+print(args)
 print(device)
 
 seed_everything()
 
 make_folder()
 
-# weigths for L1 loss
-
-lossweights = None
-countbins = 1. / np.load("prior_probs.npy")
-binedges = np.load("ab_quantize.npy").reshape(2, 313)
-lossweights = {}
-for i in range(313):
-    if binedges[0, i] not in lossweights:
-        lossweights[binedges[0, i]] = {}
-    lossweights[binedges[0, i]][binedges[1, i]] = countbins[i]
-binedges = binedges
-lossweights = lossweights
-
 h, w = [32, 32]
 wd = 0.
 dpi = 400
 
-train_lab, test_lab = load_dataset(debug=args.debug, N=10, device=device)
+train_lab = torch.tensor(np.load("../datasets/cifar10/train_lab.npy"), device=device)
+test_lab = torch.tensor(np.load("../datasets/cifar10/test_lab.npy"), device=device)
+val_lab = torch.tensor(np.load("../datasets/cifar10/val_lab.npy"), device=device)
+
+transform = torchvision.transforms.Compose([ToType(torch.float), Normalize()])
+antitransform = torchvision.transforms.Compose([UnNormalize(), ToType(torch.int8)])
 
 train_lab_set = torch.utils.data.TensorDataset(train_lab)
 test_lab_set = torch.utils.data.TensorDataset(test_lab)
+val_lab_set = torch.utils.data.TensorDataset(val_lab)
 
 trainloader = torch.utils.data.DataLoader(train_lab_set, batch_size=args.bs, shuffle=True)
 testloader = torch.utils.data.DataLoader(test_lab_set, batch_size=args.bs, shuffle=True)
+valloader = torch.utils.data.DataLoader(val_lab_set, batch_size=args.bs, shuffle=True)
 
 classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
 
@@ -83,14 +121,12 @@ for epoch in range(args.e):
     vae.train()
     train_loss_vae = 0
     for idx, (batch) in tqdm(enumerate(trainloader)):
-        batch = batch[0]
-        cL = batch[:, 0].unsqueeze(1)
-        cab = batch[:, 1:]
+        cl, cab = transform(batch[0])
         optimizer.zero_grad()
-        mu, logvar, color_out = vae(cab, cL)
-        mi_loss = loss_function(color_out, cab, cL)
+        mu, logvar, color_out = vae(cab, cl)
+        mi_loss = loss_function(color_out, cab, cl)
         kl_loss, recon_loss_l2 = vae_loss(mu, logvar, color_out, cab)
-        loss_vae = (0.45*kl_loss + 0.45*recon_loss_l2 + 0.1*mi_loss)
+        loss_vae = (kl_loss + recon_loss_l2 + mi_loss)
         loss_vae.backward()
         optimizer.step()
         train_loss_vae += loss_vae.item()
@@ -99,13 +135,11 @@ for epoch in range(args.e):
     test_loss_vae = 0
     with torch.no_grad():
         for idx, (batch) in tqdm(enumerate(testloader)):
-            batch = batch[0]
-            cL = batch[:, 0].unsqueeze(1)
-            cab = batch[:, 1:]
-            mu, logvar, color_out = vae(cab, cL)
-            mi_loss = loss_function(color_out, cab, cL)
+            cl, cab = transform(batch[0])
+            mu, logvar, color_out = vae(cab, cl)
+            mi_loss = loss_function(color_out, cab, cl)
             kl_loss, recon_loss_l2 = vae_loss(mu, logvar, color_out, cab)
-            loss_vae = (0.45*kl_loss + 0.45*recon_loss_l2 + 0.1*mi_loss)
+            loss_vae = (kl_loss + recon_loss_l2 + mi_loss)
             test_loss_vae += loss_vae.item()
     test_loss_vae /= (idx + 1)
     print("Epoch {} vae train loss {:.3f} test loss {:.3f}".format(epoch, train_loss_vae, test_loss_vae))
@@ -115,35 +149,46 @@ for epoch in range(args.e):
         print("saving")
     losses[epoch] = [train_loss_vae, test_loss_vae]
 
-
 plt.clf()
-plt.plot(losses[:, 0], color="navy", label="train")
-plt.plot(losses[:, 1], color="red", label="test")
+plt.plot(losses[1:, 0], color="navy", label="train")
+plt.plot(losses[1:, 1], color="red", label="test")
 plt.legend()
 plt.xlabel("epochs")
 plt.ylabel("vae loss")
 plt.savefig("figures/train_curve", dpi=dpi)
 
+UN = UnNormalize()
+
 vae.load_state_dict(torch.load("models/vae_mi.pth"))
-n = 10
+n = 8
 l = 5
-selected = np.random.choice(test_lab.shape[0], size=n, replace=False)
+selected = np.random.choice(train_lab.shape[0], size=n, replace=False)
 vae.eval()
-img_lab = torch.zeros((n, 3, test_lab.shape[2], test_lab.shape[2]))
-img_rgb = np.zeros((n, 3, test_lab.shape[2], test_lab.shape[2]))
-img_gt_rgb = unnormalize_and_lab_2_rgb(test_lab[selected])
+img_lab = torch.zeros((n, 3, h, w), dtype=torch.float, device=device)
+img_gt_rgb = np.load("../datasets/cifar10/train.npy")[selected]
 with torch.no_grad():
-    _, _, ab = vae(test_lab[selected, 1:], test_lab[selected, 0].unsqueeze(1))
-    img_lab[:, 1] = ab[:, 0]
-    img_lab[:, 2] = ab[:, 1]
-    img_lab[:, 0] = test_lab[selected, 0]
-    img_rgb = unnormalize_and_lab_2_rgb(img_lab)
-    for j in range(n):
-        plt.clf()
-        plt.axis("off")
-        fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(2*l, l))
-        ax[0].imshow(np.transpose(img_gt_rgb[j], (1, 2, 0)))
-        ax[1].imshow(np.transpose(img_rgb[j], (1, 2, 0)))
-        ax[0].set_title("ground truth")
-        ax[1].set_title("colorized")
-        plt.savefig("figures/im_{}".format(j), dpi=dpi)
+    cl, cab = transform(train_lab[selected])
+    _, _, ab = vae(cab, cl)
+    img_lab[:, 1:] = ab
+    img_lab[:, 0] = cl.squeeze()
+    img_lab = UN(img_lab)
+    img_rgb = lab2rgb(img_lab)
+    nrows = int(n / 2)
+    ncols = 4
+    plt.clf()
+    fig, row = plt.subplots(nrows=nrows, ncols=ncols, figsize=(l, l))
+    for i, row in enumerate(row):
+        row[0].imshow(np.transpose(img_gt_rgb[i], (1, 2, 0)))
+        row[1].imshow(np.transpose(img_rgb[i], (1, 2, 0)))
+        row[2].imshow(np.transpose(img_gt_rgb[i + nrows], (1, 2, 0)))
+        row[3].imshow(np.transpose(img_rgb[i + nrows], (1, 2, 0)))
+        row[0].set_title("ground truth") if i == 0 else 0
+        row[1].set_title("colorized") if i == 0 else 0
+        row[2].set_title("ground truth") if i == 0 else 0
+        row[3].set_title("colorized") if i == 0 else 0
+        row[0].axis("off")
+        row[1].axis("off")
+        row[2].axis("off")
+        row[3].axis("off")
+    plt.tight_layout()
+    plt.savefig("figures/images", dpi=dpi)

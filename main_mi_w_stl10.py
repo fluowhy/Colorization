@@ -70,6 +70,7 @@ else:
 N_train = img_lossweights_train.shape[0]
 N_test = img_lossweights_test.shape[0]
 N_unlabeled = img_lossweights_unlabeled.shape[0]
+N_val = 0
 N_all = N_train + N_test + N_unlabeled
 sum_train = int(0.7 * N_all - N_train)
 sum_test = int(0.2 * N_all - N_test)

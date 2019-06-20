@@ -1,5 +1,5 @@
 import torch
-import pytorch_colors as colors
+#import pytorch_colors as colors
 import numpy as np
 import matplotlib.pyplot as plt
 import cv2
