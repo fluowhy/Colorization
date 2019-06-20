@@ -70,11 +70,11 @@ def new_load_convert(debug, split="train"):
     dataset = torchvision.datasets.STL10(root="../datasets/stl10/{}".format(split), split=split, download=False)
     # save sets as (N, C, h, w)
     if not debug:
-        np.save("../datasets/stl10/{}".format(split), dataset.data[:N].numpy())
-        np.save("../datasets/stl10/{}_lab".format(split), rgb2lab(dataset.data[:N]))
+        np.save("../datasets/stl10/{}".format(split), dataset.data)
+        np.save("../datasets/stl10/{}_lab".format(split), rgb2lab(torch.as_tensor(dataset.data)))
     else:
-        np.save("../datasets/stl10/{}".format(split), dataset.data.numpy())
-        np.save("../datasets/stl10/{}_lab".format(split), rgb2lab(dataset.data))
+        np.save("../datasets/stl10/{}".format(split), dataset.data[:N])
+        np.save("../datasets/stl10/{}_lab".format(split), rgb2lab(torch.as_tensor(dataset.data[:N])))
     return
 
 if __name__=="__main__":
