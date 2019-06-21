@@ -105,10 +105,6 @@ else:
     vae = VAE(16, device)
     vae.load_state_dict(torch.load("models/vae_mi_cifar10.pth")) if args.pre else 0
 
-if torch.cuda.device_count() > 1:
-  print("Let's use", torch.cuda.device_count(), "GPUs!")
-  vae = torch.nn.DataParallel(vae)
-
 vae.to(device)
 
 h, w = val_lab.shape[0], val_lab.shape[1]
