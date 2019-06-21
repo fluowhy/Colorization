@@ -174,6 +174,10 @@ class VAE96(nn.Module):
     self.cond_enc_bn4 = torch.nn.BatchNorm2d(8*nf)
     self.cond_enc_conv5 = torch.nn.Conv2d(8*nf, 16*nf, ks, stride=2, padding=1, dilation=1)
     self.cond_enc_bn5 = torch.nn.BatchNorm2d(16*nf)
+    self.cond_enc_conv6 = torch.nn.Conv2d(16 * nf, 32 * nf, ks, stride=2, padding=1, dilation=1)
+    self.cond_enc_bn6 = torch.nn.BatchNorm2d(32 * nf)
+    self.cond_enc_conv7 = torch.nn.Conv2d(32 * nf, 64 * nf, ks, stride=2, padding=1, dilation=1)
+    self.cond_enc_bn7 = torch.nn.BatchNorm2d(64 * nf)
 
     self.dec_conv1 = torch.nn.ConvTranspose2d(ld, 64 * nf, 2, stride=1, padding=0, dilation=1)  # 2
     self.dec_bn1 = torch.nn.BatchNorm2d(64*nf)
@@ -206,7 +210,10 @@ class VAE96(nn.Module):
     sc_feat8 = self.cond_enc_bn4(self.cond_enc_conv4(x))
     x = self.relu(sc_feat8)
     sc_feat4 = self.cond_enc_bn5(self.cond_enc_conv5(x))
-    return sc_feat32, sc_feat16, sc_feat8, sc_feat4
+    x = self.relu(sc_feat4)
+    x = self.relu(self.cond_enc_bn6(self.cond_enc_conv6(x)))
+    x = self.relu(self.cond_enc_bn7(self.cond_enc_conv7(x)))
+    return x, sc_feat32, sc_feat16, sc_feat8, sc_feat4
 
   def decoder(self, z, sc_feat32, sc_feat16, sc_feat8, sc_feat4):
     z = z.reshape(z.shape[0], self.ld, 1, 1)
@@ -237,12 +244,12 @@ class VAE96(nn.Module):
     color_out = self.decoder(z, sc_feat32, sc_feat16, sc_feat8, sc_feat4)
     return mu, logvar, color_out
     """
-    sc_feat32, sc_feat16, sc_feat8, sc_feat4 = self.cond_encoder(greylevel)
+    z_cond, sc_feat32, sc_feat16, sc_feat8, sc_feat4 = self.cond_encoder(greylevel)
     mu, logvar = self.encode(color)
     stddev = torch.sqrt(torch.exp(logvar))
     sample = torch.randn(stddev.shape, device=stddev.device)
     z = torch.add(mu, torch.mul(sample, stddev))
     color_out = self.decoder(z, sc_feat32, sc_feat16, sc_feat8, sc_feat4)
-    return mu, logvar, color_out
+    return mu, logvar, color_out, z_cond
 
 
