@@ -84,10 +84,6 @@ seed_everything()
 
 make_folder()
 
-h, w = [32, 32]
-wd = 0.
-dpi = 400
-
 train_lab = torch.tensor(np.load("../datasets/cifar10/train_lab.npy"), device=device)
 test_lab = torch.tensor(np.load("../datasets/cifar10/test_lab.npy"), device=device)
 val_lab = torch.tensor(np.load("../datasets/cifar10/val_lab.npy"), device=device)
@@ -104,10 +100,21 @@ testloader = torch.utils.data.DataLoader(test_lab_set, batch_size=args.bs, shuff
 valloader = torch.utils.data.DataLoader(val_lab_set, batch_size=args.bs, shuffle=True)
 
 if args.debug:
-    vae = VAE(2, device).to(device)
+    vae = VAE(2, device)
 else:
-    vae = VAE(16, device).to(device)
+    vae = VAE(16, device)
     vae.load_state_dict(torch.load("models/vae_mi_cifar10.pth")) if args.pre else 0
+
+if torch.cuda.device_count() > 1:
+  print("Let's use", torch.cuda.device_count(), "GPUs!")
+  vae = torch.nn.DataParallel(vae)
+
+vae.to(device)
+
+h, w = val_lab.shape[0]. val_lab.shape[1]
+wd = 0.
+dpi = 400
+
 print(count_parameters(vae))
 optimizer = torch.optim.Adam(vae.parameters(), lr=args.lr, weight_decay=wd)
 bce = torch.nn.BCELoss().to(device)
