@@ -82,11 +82,11 @@ if __name__=="__main__":
     parser.add_argument("--debug", action="store_true", help="select debugging state (default False)")
 
     args = parser.parse_args()
-    """
+
     new_load_convert(args.debug, split="train")
     new_load_convert(args.debug, split="test")
     new_load_convert(args.debug, split="unlabeled")
-    """
+
 
     # first split rgb
     train_data = np.load("../datasets/stl10/train.npy")

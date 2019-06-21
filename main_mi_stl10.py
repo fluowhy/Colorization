@@ -89,9 +89,9 @@ seed_everything()
 
 make_folder()
 
-train_lab = torch.tensor(np.load("../datasets/stl10/train_lab_1.npy"), device="cpu")
-test_lab = torch.tensor(np.load("../datasets/stl10/test_lab.npy"), device="cpu")
-val_lab = torch.tensor(np.load("../datasets/stl10/val_lab_1.npy"), device="cpu")
+train_lab = torch.tensor(np.load("../datasets/stl10/train_lab_1.npy"))
+test_lab = torch.tensor(np.load("../datasets/stl10/test_lab.npy"))
+val_lab = torch.tensor(np.load("../datasets/stl10/val_lab_1.npy"))
 
 transform = torchvision.transforms.Compose([ToType(torch.float, device), Normalize()])
 
@@ -117,8 +117,8 @@ print(count_parameters(vae))
 optimizer = torch.optim.Adam(vae.parameters(), lr=args.lr, weight_decay=wd)
 bce = torch.nn.BCELoss().to(device)
 mse = torch.nn.MSELoss(reduction="sum").to(device)
-mutual_info = MutualInformation(2, 1.01, True, True).to(device)
-lam = 1
+# mutual_info = MutualInformation(2, 1.01, True, True).to(device)
+# lam = 1
 
 losses = np.zeros((args.e, 2))
 best_loss = np.inf
