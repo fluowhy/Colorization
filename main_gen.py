@@ -8,7 +8,6 @@ import argparse
 from im import *
 from model import *
 from utils import *
-from vae import *
 from mdn import *
 
 

@@ -93,7 +93,6 @@ test_lab = torch.tensor(np.load("../datasets/stl10/test_lab.npy"), device=device
 val_lab = torch.tensor(np.load("../datasets/stl10/val_lab_1.npy"), device=device)
 
 transform = torchvision.transforms.Compose([ToType(torch.float), Normalize()])
-antitransform = torchvision.transforms.Compose([UnNormalize(), ToType(torch.int8)])
 
 train_lab_set = torch.utils.data.TensorDataset(train_lab)
 test_lab_set = torch.utils.data.TensorDataset(test_lab)
@@ -106,9 +105,9 @@ valloader = torch.utils.data.DataLoader(val_lab_set, batch_size=args.bs, shuffle
 classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
 
 if args.debug:
-    vae = VAE(2, device).to(device)
+    vae = VAE96(in_ab=2, in_l=1, nf=1, ld=2, ks=3, do=0.7).to(device)
 else:
-    vae = VAE(32, device).to(device)
+    vae = VAE96(in_ab=2, in_l=1, nf=16, ld=64, ks=3, do=0.7).to(device)  # 64, 128
 print(count_parameters(vae))
 optimizer = torch.optim.Adam(vae.parameters(), lr=args.lr, weight_decay=wd)
 bce = torch.nn.BCELoss().to(device)
