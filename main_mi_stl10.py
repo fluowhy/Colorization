@@ -106,6 +106,7 @@ if args.debug:
     vae = VAE96(in_ab=2, in_l=1, nf=1, ld=2, ks=3, do=0.7).to(device)
 else:
     vae = VAE96(in_ab=2, in_l=1, nf=16, ld=64, ks=3, do=0.7).to(device)  # 64, 128
+    vae.load_state_dict(torch.load("models/vae_mi_stl10.pth")) if args.pre else 0
 
 wd = 0.
 dpi = 400
