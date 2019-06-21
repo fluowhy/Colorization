@@ -163,7 +163,7 @@ plt.savefig("figures/train_curve", dpi=dpi)
 UN = UnNormalize()
 
 vae.load_state_dict(torch.load("models/vae_mi_stl10.pth"))
-n = 8
+n = 10
 l = 5
 selected = np.random.choice(test_lab.shape[0], size=n, replace=False)
 vae.eval()
