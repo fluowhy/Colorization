@@ -100,7 +100,7 @@ testloader = torch.utils.data.DataLoader(test_lab_set, batch_size=args.bs, shuff
 valloader = torch.utils.data.DataLoader(val_lab_set, batch_size=args.bs, shuffle=True)
 
 if args.debug:
-    vae = VAE(2, device)
+    vae = VAE(1, device)
 else:
     vae = VAE(16, device)
     vae.load_state_dict(torch.load("models/vae_mi_cifar10.pth")) if args.pre else 0
@@ -130,7 +130,7 @@ for epoch in range(args.e):
         optimizer.zero_grad()
         mu, logvar, color_out = vae(cab, cl)
         #mi_loss = loss_function(color_out, cab, cl)
-        kl_loss, recon_loss_l2 = vae_loss(mu, logvar, color_out, cab)
+        kl_loss, recon_loss_l2 = vae_loss(mu_c, logvar_c, color_out, cab)
         loss_vae = kl_loss + recon_loss_l2# + lam * mi_loss
         loss_vae.backward()
         optimizer.step()
@@ -143,7 +143,7 @@ for epoch in range(args.e):
             cl, cab = transform(batch[0])
             mu, logvar, color_out = vae(cab, cl)
             #mi_loss = loss_function(color_out, cab, cl)
-            kl_loss, recon_loss_l2 = vae_loss(mu, logvar, color_out, cab)
+            kl_loss, recon_loss_l2 = vae_loss(mu_c, logvar_c, color_out, cab)
             loss_vae = kl_loss + recon_loss_l2# + lam * mi_loss
             test_loss_vae += loss_vae.item()
     test_loss_vae /= (idx + 1)

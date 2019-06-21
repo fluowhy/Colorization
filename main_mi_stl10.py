@@ -104,11 +104,11 @@ testloader = torch.utils.data.DataLoader(test_lab_set, batch_size=args.bs, shuff
 valloader = torch.utils.data.DataLoader(val_lab_set, batch_size=args.bs, shuffle=True)
 
 if args.debug:
-    vae = VAE96(in_ab=2, in_l=1, nf=1, ld=2, ks=3, do=0.7).to(device)
+    vae = VAE96(in_ab=2, in_l=1, nf=1, ld=2, ks=3, do=0.7)
 else:
-    vae = VAE96(in_ab=2, in_l=1, nf=16, ld=64, ks=3, do=0.7).to(device)  # 64, 128
+    vae = VAE96(in_ab=2, in_l=1, nf=32, ld=128, ks=3, do=0.7)  # 64, 128
     vae.load_state_dict(torch.load("models/vae_mi_stl10.pth")) if args.pre else 0
-
+vae.to(device)
 wd = 0.
 dpi = 400
 h, w = val_lab.shape[2], val_lab.shape[3]
@@ -128,11 +128,12 @@ for epoch in range(args.e):
     for idx, (batch) in tqdm(enumerate(trainloader)):
         cl, cab = transform(batch[0])
         optimizer.zero_grad()
-        mu, logvar, color_out, z_cond = vae(cab, cl)
+        mu, logvar, color_out, mu_c, logvar_c = vae(cab, cl)
         #mi_loss = loss_function(color_out, cab, cl)
         kl_loss, recon_loss_l2 = vae_loss(mu, logvar, color_out, cab)
-        l2_latent_space = mse(z_cond, mu).mean()
-        loss_vae = kl_loss + recon_loss_l2 + l2_latent_space
+        l2_latent_space_mu = mse(mu_c, mu.detach()).mean()
+        l2_latent_space_logvar = mse(logvar_c, logvar.detach()).mean()
+        loss_vae = kl_loss + recon_loss_l2 + l2_latent_space_mu + l2_latent_space_logvar
         loss_vae.backward()
         optimizer.step()
         train_loss_vae += loss_vae.item()
@@ -142,11 +143,12 @@ for epoch in range(args.e):
     with torch.no_grad():
         for idx, (batch) in tqdm(enumerate(testloader)):
             cl, cab = transform(batch[0])
-            mu, logvar, color_out, z_cond = vae(cab, cl)
+            mu, logvar, color_out, mu_c, logvar_c = vae(cab, cl)
             #mi_loss = loss_function(color_out, cab, cl)
             kl_loss, recon_loss_l2 = vae_loss(mu, logvar, color_out, cab)
-            l2_latent_space = mse(z_cond, mu).mean()
-            loss_vae = kl_loss + recon_loss_l2 + l2_latent_space
+            l2_latent_space_mu = mse(mu_c, mu).mean()
+            l2_latent_space_logvar = mse(logvar_c, logvar).mean()
+            loss_vae = kl_loss + recon_loss_l2 + l2_latent_space_mu + l2_latent_space_logvar
             test_loss_vae += loss_vae.item()
     test_loss_vae /= (idx + 1)
     print("Epoch {} vae train loss {:.3f} test loss {:.3f}".format(epoch, train_loss_vae, test_loss_vae))
@@ -175,7 +177,7 @@ img_lab = torch.zeros((n, 3, h, w), dtype=torch.float, device=device)
 img_gt_rgb = np.load("../datasets/stl10/test.npy")[selected]
 with torch.no_grad():
     cl, cab = transform(test_lab[selected])
-    _, _, ab = vae(cab, cl)
+    _, _, ab, _, _ = vae(cab, cl)
     img_lab[:, 1:] = ab
     img_lab[:, 0] = cl.squeeze()
     img_lab = UN(img_lab)
