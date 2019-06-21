@@ -125,9 +125,9 @@ for epoch in range(args.e):
         cl, cab = transform(batch[0])
         optimizer.zero_grad()
         mu, logvar, color_out = vae(cab, cl)
-        mi_loss = loss_function(color_out, cab, cl)
+        #mi_loss = loss_function(color_out, cab, cl)
         kl_loss, recon_loss_l2 = vae_loss(mu, logvar, color_out, cab)
-        loss_vae = kl_loss + recon_loss_l2 + lam * mi_loss
+        loss_vae = kl_loss + recon_loss_l2# + lam * mi_loss
         loss_vae.backward()
         optimizer.step()
         train_loss_vae += loss_vae.item()
@@ -138,9 +138,9 @@ for epoch in range(args.e):
         for idx, (batch) in tqdm(enumerate(testloader)):
             cl, cab = transform(batch[0])
             mu, logvar, color_out = vae(cab, cl)
-            mi_loss = loss_function(color_out, cab, cl)
+            #mi_loss = loss_function(color_out, cab, cl)
             kl_loss, recon_loss_l2 = vae_loss(mu, logvar, color_out, cab)
-            loss_vae = kl_loss + recon_loss_l2 + lam * mi_loss
+            loss_vae = kl_loss + recon_loss_l2# + lam * mi_loss
             test_loss_vae += loss_vae.item()
     test_loss_vae /= (idx + 1)
     print("Epoch {} vae train loss {:.3f} test loss {:.3f}".format(epoch, train_loss_vae, test_loss_vae))
