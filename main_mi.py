@@ -103,12 +103,11 @@ trainloader = torch.utils.data.DataLoader(train_lab_set, batch_size=args.bs, shu
 testloader = torch.utils.data.DataLoader(test_lab_set, batch_size=args.bs, shuffle=True)
 valloader = torch.utils.data.DataLoader(val_lab_set, batch_size=args.bs, shuffle=True)
 
-classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
-
 if args.debug:
     vae = VAE(2, device).to(device)
 else:
     vae = VAE(16, device).to(device)
+    vae.load_state_dict(torch.load("models/vae_mi_cifar10.pth")) if args.pre else 0
 print(count_parameters(vae))
 optimizer = torch.optim.Adam(vae.parameters(), lr=args.lr, weight_decay=wd)
 bce = torch.nn.BCELoss().to(device)
@@ -145,7 +144,7 @@ for epoch in range(args.e):
     test_loss_vae /= (idx + 1)
     print("Epoch {} vae train loss {:.3f} test loss {:.3f}".format(epoch, train_loss_vae, test_loss_vae))
     if test_loss_vae < best_loss:
-        torch.save(vae.state_dict(), "models/vae_mi.pth")
+        torch.save(vae.state_dict(), "models/vae_mi_cifar10.pth")
         best_loss = test_loss_vae
         print("saving")
     losses[epoch] = [train_loss_vae, test_loss_vae]
@@ -160,7 +159,7 @@ plt.savefig("figures/train_curve", dpi=dpi)
 
 UN = UnNormalize()
 
-vae.load_state_dict(torch.load("models/vae_mi.pth"))
+vae.load_state_dict(torch.load("models/vae_mi_cifar10.pth"))
 n = 10
 l = 5
 selected = np.random.choice(test_lab.shape[0], size=n, replace=False)
