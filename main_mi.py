@@ -125,8 +125,8 @@ for epoch in range(args.e):
     train_loss_vae = 0
     for idx, (batch) in tqdm(enumerate(trainloader)):
         cl, cab = transform(batch[0])
-        cl.to(device)
-        cab.to(device)
+        cl = cl.to(device)
+        cab = cab.to(device)
         optimizer.zero_grad()
         mu, logvar, color_out = vae(cab, cl)
         #mi_loss = loss_function(color_out, cab, cl)
