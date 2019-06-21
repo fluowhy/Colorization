@@ -111,7 +111,7 @@ if torch.cuda.device_count() > 1:
 
 vae.to(device)
 
-h, w = val_lab.shape[0]. val_lab.shape[1]
+h, w = val_lab.shape[0], val_lab.shape[1]
 wd = 0.
 dpi = 400
 
