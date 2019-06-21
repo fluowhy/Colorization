@@ -50,11 +50,12 @@ class UnNormalize(object):
 
 
 class ToType(object):
-    def __init__(self, dtype):
+    def __init__(self, dtype, device):
         self.dtype = dtype
+        self.device = device
 
     def __call__(self, img):
-        return img.type(dtype=self.dtype)
+        return img.type(dtype=self.dtype).to(self.device)
 
 
 def vae_loss(mu, logvar, pred, gt):
@@ -88,11 +89,11 @@ seed_everything()
 
 make_folder()
 
-train_lab = torch.tensor(np.load("../datasets/stl10/train_lab_1.npy"), device=device)
-test_lab = torch.tensor(np.load("../datasets/stl10/test_lab.npy"), device=device)
-val_lab = torch.tensor(np.load("../datasets/stl10/val_lab_1.npy"), device=device)
+train_lab = torch.tensor(np.load("../datasets/stl10/train_lab_1.npy"), device="cpu")
+test_lab = torch.tensor(np.load("../datasets/stl10/test_lab.npy"), device="cpu")
+val_lab = torch.tensor(np.load("../datasets/stl10/val_lab_1.npy"), device="cpu")
 
-transform = torchvision.transforms.Compose([ToType(torch.float), Normalize()])
+transform = torchvision.transforms.Compose([ToType(torch.float, device), Normalize()])
 
 train_lab_set = torch.utils.data.TensorDataset(train_lab)
 test_lab_set = torch.utils.data.TensorDataset(test_lab)
