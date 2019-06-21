@@ -84,9 +84,9 @@ seed_everything()
 
 make_folder()
 
-train_lab = torch.tensor(np.load("../datasets/cifar10/train_lab.npy"), device=device)
-test_lab = torch.tensor(np.load("../datasets/cifar10/test_lab.npy"), device=device)
-val_lab = torch.tensor(np.load("../datasets/cifar10/val_lab.npy"), device=device)
+train_lab = torch.tensor(np.load("../datasets/cifar10/train_lab.npy"), device="cpu")
+test_lab = torch.tensor(np.load("../datasets/cifar10/test_lab.npy"), device="cpu")
+val_lab = torch.tensor(np.load("../datasets/cifar10/val_lab.npy"), device="cpu")
 
 transform = torchvision.transforms.Compose([ToType(torch.float), Normalize()])
 antitransform = torchvision.transforms.Compose([UnNormalize(), ToType(torch.int8)])
@@ -128,7 +128,7 @@ for epoch in range(args.e):
     vae.train()
     train_loss_vae = 0
     for idx, (batch) in tqdm(enumerate(trainloader)):
-        cl, cab = transform(batch[0])
+        cl, cab = transform(batch[0]).device()
         optimizer.zero_grad()
         mu, logvar, color_out = vae(cab, cl)
         #mi_loss = loss_function(color_out, cab, cl)
