@@ -88,10 +88,6 @@ seed_everything()
 
 make_folder()
 
-h, w = [32, 32]
-wd = 0.
-dpi = 400
-
 train_lab = torch.tensor(np.load("../datasets/stl10/train_lab_1.npy"), device=device)
 test_lab = torch.tensor(np.load("../datasets/stl10/test_lab.npy"), device=device)
 val_lab = torch.tensor(np.load("../datasets/stl10/val_lab_1.npy"), device=device)
@@ -106,12 +102,15 @@ trainloader = torch.utils.data.DataLoader(train_lab_set, batch_size=args.bs, shu
 testloader = torch.utils.data.DataLoader(test_lab_set, batch_size=args.bs, shuffle=True)
 valloader = torch.utils.data.DataLoader(val_lab_set, batch_size=args.bs, shuffle=True)
 
-classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
-
 if args.debug:
     vae = VAE96(in_ab=2, in_l=1, nf=1, ld=2, ks=3, do=0.7).to(device)
 else:
     vae = VAE96(in_ab=2, in_l=1, nf=16, ld=64, ks=3, do=0.7).to(device)  # 64, 128
+
+wd = 0.
+dpi = 400
+h, w = val_lab.shape[2], val_lab.shape[3]
+
 print(count_parameters(vae))
 optimizer = torch.optim.Adam(vae.parameters(), lr=args.lr, weight_decay=wd)
 bce = torch.nn.BCELoss().to(device)
