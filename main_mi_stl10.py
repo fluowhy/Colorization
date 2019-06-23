@@ -182,7 +182,7 @@ with torch.no_grad():
     stddev = torch.sqrt(torch.exp(logvar_c))
     sample = torch.randn(stddev.shape, device=stddev.device)
     z = torch.add(mu_c, torch.mul(sample, stddev))
-    ab = self.decoder(z, sc_feat32, sc_feat16, sc_feat8, sc_feat4)
+    ab = vae.decoder(z, sc_feat32, sc_feat16, sc_feat8, sc_feat4)
     ############
     img_lab[:, 1:] = ab
     img_lab[:, 0] = cl.squeeze()
