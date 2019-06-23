@@ -106,7 +106,7 @@ valloader = torch.utils.data.DataLoader(val_lab_set, batch_size=args.bs, shuffle
 if args.debug:
     vae = VAE96(in_ab=2, in_l=1, nf=1, ld=2, ks=3, do=0.7)
 else:
-    vae = VAE96(in_ab=2, in_l=1, nf=32, ld=128, ks=3, do=0.7)  # 64, 128
+    vae = VAE96(in_ab=2, in_l=1, nf=64, ld=128, ks=3, do=0.7)  # 64, 128
     vae.load_state_dict(torch.load("models/vae_mi_stl10.pth", map_location=args.d)) if args.pre else 0
 vae.to(device)
 wd = 0.
