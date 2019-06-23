@@ -176,8 +176,14 @@ vae.eval()
 img_lab = torch.zeros((n, 3, h, w), dtype=torch.float, device=device)
 img_gt_rgb = np.load("../datasets/stl10/test.npy")[selected]
 with torch.no_grad():
-    cl, cab = transform(test_lab[selected])
-    _, _, ab, _, _ = vae(cab, cl)
+    cl, _ = transform(test_lab[selected])
+    ############
+    mu_c, logvar_c, sc_feat32, sc_feat16, sc_feat8, sc_feat4 = vae.cond_encoder(cl)
+    stddev = torch.sqrt(torch.exp(logvar_c))
+    sample = torch.randn(stddev.shape, device=stddev.device)
+    z = torch.add(mu_c, torch.mul(sample, stddev))
+    ab = self.decoder(z, sc_feat32, sc_feat16, sc_feat8, sc_feat4)
+    ############
     img_lab[:, 1:] = ab
     img_lab[:, 0] = cl.squeeze()
     img_lab = UN(img_lab)
