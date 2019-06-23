@@ -107,7 +107,7 @@ if args.debug:
     vae = VAE96(in_ab=2, in_l=1, nf=1, ld=2, ks=3, do=0.7)
 else:
     vae = VAE96(in_ab=2, in_l=1, nf=32, ld=128, ks=3, do=0.7)  # 64, 128
-    vae.load_state_dict(torch.load("models/vae_mi_stl10.pth", map_location=args.d))) if args.pre else 0
+    vae.load_state_dict(torch.load("models/vae_mi_stl10.pth", map_location=args.d)) if args.pre else 0
 vae.to(device)
 wd = 0.
 dpi = 400
@@ -168,7 +168,7 @@ plt.savefig("figures/train_curve", dpi=dpi)
 
 UN = UnNormalize()
 
-vae.load_state_dict(torch.load("models/vae_mi_stl10.pth", map_location=args.d)))
+vae.load_state_dict(torch.load("models/vae_mi_stl10.pth", map_location=args.d))
 n = 10
 l = 5
 selected = np.random.choice(test_lab.shape[0], size=n, replace=False)
