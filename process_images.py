@@ -110,7 +110,7 @@ def generate_rgb(model, data_loader, split):
             rgb_out = antitransform(torch.cat((batch_l, ab_out), dim=1))
             new_rgb.append(rgb_out)
     new_rgb = np.array(new_rgb).squeeze()
-    np.save("rgb_{}_{}".format(split, args.ds), new_rgb)
+    np.save("rgb_{}_{}".format(split, "vae"), new_rgb)
     return
 
 generate_rgb(model, trainloader, split="train")
