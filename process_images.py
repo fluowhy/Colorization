@@ -26,6 +26,12 @@ antitransform = torchvision.transforms.Compose([UnNormalize(), ToRGB()])
 train_set = torchvision.datasets.STL10(root="../datasets/stl10", split="train", download=False)
 test_set = torchvision.datasets.STL10(root="../datasets/stl10", split="test", download=False)
 
+# save labels and images
+np.save("y_train", train_set.labels)
+np.save("y_test", test_set.labels)
+np.save("x_train", train_set.data)
+np.save("x_test", test_set.data)
+
 train_set = torch.utils.data.TensorDataset(torch.tensor(train_set.data, dtype=torch.uint8, device=device))
 test_set = torch.utils.data.TensorDataset(torch.tensor(test_set.data, dtype=torch.uint8, device=device))
 
