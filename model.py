@@ -203,7 +203,7 @@ class DIS(torch.nn.Module):
 
 
 class CONVCLF(torch.nn.Module):
-    def __init__(self, inch, nch, nh, nout, ks):
+    def __init__(self, inch, nch, nh, nout, ks=3):
         super(CONVCLF, self).__init__()
         self.clf = torch.nn.Sequential(
             torch.nn.Conv2d(inch, nch, ks, stride=2, padding=int(ks / 2)),
@@ -218,10 +218,21 @@ class CONVCLF(torch.nn.Module):
             torch.nn.Conv2d(int(nch * 4), int(nch * 8), ks, stride=2, padding=int(ks / 2)),
             torch.nn.BatchNorm2d(int(nch * 8)),
             torch.nn.ReLU(),
-            Flatten(),
-            torch.nn.Linear(int(nch * 8) * 2 * int(32 / (2 ** 4)), nh),
-            torch.nn.Linear(nh, nout)
+            torch.nn.Conv2d(int(nch * 8), int(nch * 16), ks, stride=2, padding=int(ks / 2)),
+            torch.nn.BatchNorm2d(int(nch * 16)),
+            torch.nn.ReLU(),
+            torch.nn.Conv2d(int(nch * 16), int(nch * 32), ks, stride=2, padding=int(ks / 2)),
+            torch.nn.BatchNorm2d(int(nch * 32)),
+            torch.nn.ReLU(),
+            torch.nn.Conv2d(int(nch * 32), int(nch * 64), ks, stride=2, padding=int(ks / 2)),
+            torch.nn.BatchNorm2d(int(nch * 64)),
+            torch.nn.ReLU(),
+            torch.nn.Conv2d(int(nch * 64), nh, ks, stride=2, padding=int(ks / 2)),
+            torch.nn.BatchNorm2d(nh),
+            torch.nn.ReLU(),
+            torch.nn.Conv2d(nh, nout, ks, stride=2, padding=int(ks / 2))
         )
 
     def forward(self, x):
-        return self.clf(x)
+        h = self.clf(x)
+        return h.squeeze()

@@ -424,3 +424,46 @@ def getweights(img, binedges, lossweights):
 	img_lossweights[0, :, :] = binweights.reshape(h, w)
 	img_lossweights[1, :, :] = binweights.reshape(h, w)
 	return img_lossweights
+
+
+class Normalize(object):
+    """Crop randomly the image in a sample.
+
+    Args:
+        output_size (tuple or int): Desired output size. If int, square crop
+            is made.
+    """
+
+    def __init__(self):
+        self.l = [0., 100.]
+        self.ab = [- 128., 127.]
+
+    def __call__(self, img):
+        return normalize(img[:, 0], self.l).unsqueeze(1), normalize(img[:, 1:], self.ab)
+
+
+class UnNormalize(object):
+    """Crop randomly the image in a sample.
+
+    Args:
+        output_size (tuple or int): Desired output size. If int, square crop
+            is made.
+    """
+
+    def __init__(self):
+        self.l = [0., 100.]
+        self.ab = [- 128., 127.]
+
+    def __call__(self, img):
+        img[:, 0] = unnormalize(img[:, 0], self.l)
+        img[:, 1:] = unnormalize(img[:, 1:], self.ab)
+        return img
+
+
+class ToType(object):
+    def __init__(self, dtype, device):
+        self.dtype = dtype
+        self.device = device
+
+    def __call__(self, img):
+        return img.type(dtype=self.dtype).to(self.device)

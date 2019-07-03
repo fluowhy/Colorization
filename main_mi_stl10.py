@@ -15,49 +15,6 @@ from mdn import *
 entrenar con bs=187
 """
 
-class Normalize(object):
-    """Crop randomly the image in a sample.
-
-    Args:
-        output_size (tuple or int): Desired output size. If int, square crop
-            is made.
-    """
-
-    def __init__(self):
-        self.l = [0., 100.]
-        self.ab = [- 128., 127.]
-
-    def __call__(self, img):
-        return normalize(img[:, 0], self.l).unsqueeze(1), normalize(img[:, 1:], self.ab)
-
-
-class UnNormalize(object):
-    """Crop randomly the image in a sample.
-
-    Args:
-        output_size (tuple or int): Desired output size. If int, square crop
-            is made.
-    """
-
-    def __init__(self):
-        self.l = [0., 100.]
-        self.ab = [- 128., 127.]
-
-    def __call__(self, img):
-        img[:, 0] = unnormalize(img[:, 0], self.l)
-        img[:, 1:] = unnormalize(img[:, 1:], self.ab)
-        return img
-
-
-class ToType(object):
-    def __init__(self, dtype, device):
-        self.dtype = dtype
-        self.device = device
-
-    def __call__(self, img):
-        return img.type(dtype=self.dtype).to(self.device)
-
-
 def vae_loss(mu, logvar, pred, gt):
     bs = gt.shape[0]
     kl_loss = - 0.5*(1 + logvar - mu.pow(2) - logvar.exp()).sum(dim=1).mean()
