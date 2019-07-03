@@ -51,13 +51,15 @@ y_test = x_test.labels
 
 # select dataset to use
 if args.ds == "stl10":
+    print("STL10")
     x_train = x_train.data
     x_test = x_test.data
 if args.ds == "stl10m":
+    print("STL10m")
     x_train = np.load("rgb_train_vae.npy")
     x_test = np.load("rgb_test_vae.npy")
 elif args.ds == "stl10b":
-    f = 0
+    print("STL10b")
 
 # load train and val index
 train_idx = np.load("train_idx.npy")
@@ -90,6 +92,7 @@ test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=args.bs, shuf
 val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=args.bs, shuffle=True)
 
 wd = 0.
+nclasses = len(y_test.unique())
 
 clf = CONVCLF(inch=3, nch=2, nh=20, nout=nclasses).to(device)
 print("classifier parameters {}".format(count_parameters(clf)))
