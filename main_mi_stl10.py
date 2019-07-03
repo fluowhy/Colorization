@@ -15,54 +15,12 @@ from mdn import *
 entrenar con bs=187
 """
 
-class Normalize(object):
-    """Crop randomly the image in a sample.
-
-    Args:
-        output_size (tuple or int): Desired output size. If int, square crop
-            is made.
-    """
-
-    def __init__(self):
-        self.l = [0., 100.]
-        self.ab = [- 128., 127.]
-
-    def __call__(self, img):
-        return normalize(img[:, 0], self.l).unsqueeze(1), normalize(img[:, 1:], self.ab)
-
-
-class UnNormalize(object):
-    """Crop randomly the image in a sample.
-
-    Args:
-        output_size (tuple or int): Desired output size. If int, square crop
-            is made.
-    """
-
-    def __init__(self):
-        self.l = [0., 100.]
-        self.ab = [- 128., 127.]
-
-    def __call__(self, img):
-        img[:, 0] = unnormalize(img[:, 0], self.l)
-        img[:, 1:] = unnormalize(img[:, 1:], self.ab)
-        return img
-
-
-class ToType(object):
-    def __init__(self, dtype, device):
-        self.dtype = dtype
-        self.device = device
-
-    def __call__(self, img):
-        return img.type(dtype=self.dtype).to(self.device)
-
-
 def vae_loss(mu, logvar, pred, gt):
     bs = gt.shape[0]
     kl_loss = - 0.5*(1 + logvar - mu.pow(2) - logvar.exp()).sum(dim=1).mean()
     recon_loss_l2 = mse(pred.reshape((bs, -1)), gt.reshape((bs, -1))).mean()
-    return kl_loss, recon_loss_l2
+    recon_loss_l1 = mae(pred.reshape((bs, -1)), gt.reshape((bs, -1))).mean()
+    return kl_loss, recon_loss_l2 + recon_loss_l1
 
 
 def loss_function(x_out, x, x_gray):
@@ -106,8 +64,8 @@ valloader = torch.utils.data.DataLoader(val_lab_set, batch_size=args.bs, shuffle
 if args.debug:
     vae = VAE96(in_ab=2, in_l=1, nf=1, ld=2, ks=3, do=0.7)
 else:
-    vae = VAE96(in_ab=2, in_l=1, nf=32, ld=64, ks=3, do=0.7)  # 64, 128
-    vae.load_state_dict(torch.load("models/vae_mi_stl10.pth")) if args.pre else 0
+    vae = VAE96(in_ab=2, in_l=1, nf=64, ld=128, ks=3, do=0.7)  # 64, 128
+    vae.load_state_dict(torch.load("models/vae_mi_stl10.pth", map_location=args.d)) if args.pre else 0
 vae.to(device)
 wd = 0.
 dpi = 400
@@ -117,6 +75,7 @@ print(count_parameters(vae))
 optimizer = torch.optim.Adam(vae.parameters(), lr=args.lr, weight_decay=wd)
 bce = torch.nn.BCELoss().to(device)
 mse = torch.nn.MSELoss(reduction="sum").to(device)
+mae = torch.nn.L1Loss(reduction="sum")
 # mutual_info = MutualInformation(2, 1.01, True, True).to(device)
 # lam = 1
 
@@ -168,7 +127,7 @@ plt.savefig("figures/train_curve", dpi=dpi)
 
 UN = UnNormalize()
 
-vae.load_state_dict(torch.load("models/vae_mi_stl10.pth"))
+vae.load_state_dict(torch.load("models/vae_mi_stl10.pth", map_location=args.d))
 n = 10
 l = 5
 selected = np.random.choice(test_lab.shape[0], size=n, replace=False)
@@ -176,8 +135,14 @@ vae.eval()
 img_lab = torch.zeros((n, 3, h, w), dtype=torch.float, device=device)
 img_gt_rgb = np.load("../datasets/stl10/test.npy")[selected]
 with torch.no_grad():
-    cl, cab = transform(test_lab[selected])
-    _, _, ab, _, _ = vae(cab, cl)
+    cl, _ = transform(test_lab[selected])
+    ############
+    mu_c, logvar_c, sc_feat32, sc_feat16, sc_feat8, sc_feat4 = vae.cond_encoder(cl)
+    stddev = torch.sqrt(torch.exp(logvar_c))
+    sample = torch.randn(stddev.shape, device=stddev.device)
+    z = torch.add(mu_c, torch.mul(sample, stddev))
+    ab = vae.decoder(z, sc_feat32, sc_feat16, sc_feat8, sc_feat4)
+    ############
     img_lab[:, 1:] = ab
     img_lab[:, 0] = cl.squeeze()
     img_lab = UN(img_lab)

@@ -1,130 +1,95 @@
-import torch
-import torchvision
-import matplotlib.pyplot as plt
-from tqdm import tqdm
-import pytorch_colors as colors
 import argparse
+from tqdm import tqdm
 
-from im import *
 from model import *
 from utils import *
-from vae import *
-from mdn import *
-
-
-def vae_loss(mu, logvar, pred, gt):
-    bs = gt.shape[0]
-    kl_loss = - 0.5*(1 + logvar - mu.pow(2) - logvar.exp()).sum(dim=1).mean()
-    recon_loss_l2 = mse(pred.reshape((bs, -1)), gt.reshape((bs, -1)))
-    return kl_loss, recon_loss_l2
 
 parser = argparse.ArgumentParser(description="colorization")
-parser.add_argument("--cuda", action="store_true", help="enables CUDA training (default False)")
-parser.add_argument("--N", type=int, default=10, help="training samples (default 10)")
+parser.add_argument("--d", type=str, default="cpu", help="select device (default cpu)")
+parser.add_argument("--debug", action="store_true", help="select ot debugging state  (default False)")
 parser.add_argument("--e", type=int, default=2, help="epochs (default 2)")
-args = parser.parse_args()v
+parser.add_argument("--bs", type=int, default=20, help="batch size (default 20)")
+parser.add_argument("--lr", type=float, default=2e-4, help="learning rate (default 2e-4)")
+parser.add_argument("--ds", type=str, default="stl10", help="select dataset, options: stl10, stl10m, stl10b, (default stl10)")
+args = parser.parse_args()
 
-seed_everything()
+seed = 1111
+seed_everything(seed)
 
-if not os.path.exists("figures"):
-    os.makedirs("figures")
-if not os.path.exists("models"):
-    os.makedirs("models")
+device = args.d
 
-device = torch.device("cuda:0" if args.cuda and torch.cuda.is_available() else "cpu")
-print(device)
+transform = torchvision.transforms.Compose([ToType(torch.float, device)])
 
-h, w = [32, 32]
-N = args.N
-bs = 100
-lr = 2e-4
+h, w = [96, 96]
+
+# testing only
+nclasses = 10
+N = 3 * nclasses
+
+train_images = torch.randint(low=0, high=256, size=(N, 3, h, w), dtype=torch.uint8, device="cpu")
+test_images = torch.randint(low=0, high=256, size=(N, 3, h, w), dtype=torch.uint8, device="cpu")
+val_images = torch.randint(low=0, high=256, size=(N, 3, h, w), dtype=torch.uint8, device="cpu")
+
+train_labels = torch.randint(low=0, high=nclasses, size=(N, 1), dtype=torch.long, device="cpu")
+test_labels = torch.randint(low=0, high=nclasses, size=(N, 1), dtype=torch.long, device="cpu")
+val_labels = torch.randint(low=0, high=nclasses, size=(N, 1), dtype=torch.long, device="cpu")
+
+train_set = torch.utils.data.TensorDataset(train_images, train_labels)
+test_set = torch.utils.data.TensorDataset(test_images, test_labels)
+val_set = torch.utils.data.TensorDataset(val_images, val_labels)
+
+train_loader = torch.utils.data.DataLoader(train_set, batch_size=args.bs, shuffle=True)
+test_loader = torch.utils.data.DataLoader(test_set, batch_size=args.bs, shuffle=True)
+val_loader = torch.utils.data.DataLoader(val_set, batch_size=args.bs, shuffle=True)
+
+#classes = ["airplane", "bird", "car", "cat", "deer", "dog", "horse", "monkey", "ship", "truck"]
+
 wd = 0.
-epochs = args.e
-dpi = 400
 
-train_lab, test_lab = load_dataset(N, device)
-
-train_lab_set = torch.utils.data.TensorDataset(train_lab)
-test_lab_set = torch.utils.data.TensorDataset(test_lab)
-
-trainloader = torch.utils.data.DataLoader(train_lab_set, batch_size=bs, shuffle=True)
-testloader = torch.utils.data.DataLoader(test_lab_set, batch_size=bs, shuffle=True)
-
-classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
-
-vae = VAE(16, device).to(device)
-print(count_parameters(vae))
-optimizer = torch.optim.Adam(vae.parameters(), lr=lr, weight_decay=wd)
-bce = torch.nn.BCELoss().to(device)
-mse = torch.nn.MSELoss().to(device)
+clf = CONVCLF(inch=3, nch=2, nh=20, nout=nclasses).to(device)
+print("classifier parameters {}".format(count_parameters(clf)))
+optimizer = torch.optim.Adam(clf.parameters(), lr=args.lr, weight_decay=wd)
+ce = torch.nn.CrossEntropyLoss(reduction="mean")
 
 
-
-losses = np.zeros((epochs, 2))
-best_loss = np.inf
-for epoch in range(epochs):
-    vae.train()
-    train_loss_vae = 0
-    for idx, (batch) in enumerate(trainloader):
-        batch = batch[0]
-        cL = batch[:, 0].unsqueeze(1)
-        cab = batch[:, 1:]
+def train_my_model(model, optimizer, dataloader):
+    model.train()
+    train_loss = 0
+    for idx, (batch, labels) in enumerate(dataloader):
+        # transform
         optimizer.zero_grad()
-        mu, logvar, color_out = vae(cab, cL)
-        kl_loss, recon_loss_l2 = vae_loss(mu, logvar, color_out, cab)
-        loss_vae = (0.5*kl_loss + 0.5*recon_loss_l2)
-        loss_vae.backward()
+        batch = transform(batch) / 255
+        y_pred = model(batch)
+        loss = ce(y_pred, labels.squeeze())
+        loss.backward()
         optimizer.step()
-        train_loss_vae += loss_vae.item()
-    train_loss_vae /= (idx + 1)
-    vae.eval()
-    test_loss_vae = 0
+        train_loss += loss.item()
+    return train_loss / (idx + 1)
+
+
+def eval_my_model(model, dataloader):
+    model.eval()
+    eval_loss = 0
     with torch.no_grad():
-        for idx, (batch) in enumerate(testloader):
-            batch = batch[0]
-            cL = batch[:, 0].unsqueeze(1)
-            cab = batch[:, 1:]
-            mu, logvar, color_out = vae(cab, cL)
-            kl_loss, recon_loss_l2 = vae_loss(mu, logvar, color_out, cab)
-            loss_vae = (0.5 * kl_loss + 0.5 * recon_loss_l2)
-            test_loss_vae += loss_vae.item()
-    test_loss_vae /= (idx + 1)
-    print("Epoch {} vae train loss {:.3f} test loss {:.3f}".format(epoch, train_loss_vae, test_loss_vae))
-    if test_loss_vae < best_loss:
-        torch.save(vae.state_dict(), "models/vae_vanilla.pth")
-        best_loss = test_loss_vae
+        for idx, (batch, labels) in enumerate(dataloader):
+            batch = transform(batch) / 255
+            y_pred = model(batch)
+            loss = ce(y_pred, labels.squeeze())
+            eval_loss += loss.item()
+    return eval_loss / (idx + 1)
+
+
+losses = np.zeros((args.e, 3))
+best_loss = np.inf
+for epoch in tqdm(range(args.e)):
+    train_loss = train_my_model(clf, optimizer, train_loader)
+    test_loss = eval_my_model(clf, test_loader)
+    val_loss = eval_my_model(clf, val_loader)
+    print("Epoch {} clf train loss {:.3f} test loss {:.3f} val loss {:.3f}".format(epoch, train_loss, test_loss, val_loss))
+    if val_loss < best_loss:
         print("saving")
-    losses[epoch] = [train_loss_vae, test_loss_vae]
-
-
-plt.clf()
-plt.plot(losses[:, 0], color="navy", label="train")
-plt.plot(losses[:, 1], color="red", label="test")
-plt.legend()
-plt.xlabel("epochs")
-plt.ylabel("vae loss")
-plt.savefig("figures/train_curve", dpi=dpi)
-
-vae.load_state_dict(torch.load("models/vae_vanilla.pth"))
-n = 10
-l = 5
-selected = np.random.choice(test_lab.shape[0], size=n, replace=False)
-vae.eval()
-img_lab = torch.zeros((n, 3, test_lab.shape[2], test_lab.shape[2]))
-img_rgb = np.zeros((n, 3, test_lab.shape[2], test_lab.shape[2]))
-img_gt_rgb = unnormalize_and_lab_2_rgb(test_lab[selected])
-with torch.no_grad():
-    _, _, ab = vae(test_lab[selected, 1:], test_lab[selected, 0].unsqueeze(1))
-    img_lab[:, 1] = ab[:, 0]
-    img_lab[:, 2] = ab[:, 1]
-    img_lab[:, 0] = test_lab[selected, 0]
-    img_rgb = unnormalize_and_lab_2_rgb(img_lab)
-    for j in range(n):
-        plt.clf()
-        plt.axis("off")
-        fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(2*l, l))
-        ax[0].imshow(np.transpose(img_gt_rgb[j], (1, 2, 0)))
-        ax[1].imshow(np.transpose(img_rgb[j], (1, 2, 0)))
-        ax[0].set_title("ground truth")
-        ax[1].set_title("colorized")
-        plt.savefig("figures/im_{}".format(j), dpi=dpi)
+        torch.save(clf.state_dict(), "models/clf_{}.pth".format(args.ds))
+        np.save("loss_{}".format(args.ds), losses)
+        best_loss = val_loss
+    losses[epoch] = [train_loss, test_loss, val_loss]
+np.save("loss_{}".format(args.ds), losses)
