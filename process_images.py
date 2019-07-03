@@ -36,19 +36,22 @@ model = VAE96(in_ab=2, in_l=1, nf=64, ld=128, ks=3, do=0.7)  # 64, 128
 model.load_state_dict(torch.load("models/vae_mi_stl10.pth", map_location=args.d))
 
 
-def generate_rgb(model, data_loader, split):
+def generate_rgb(model, data_loader, split, imgshape):
     model.eval()
-    new_rgb = []
+    new_rgb = np.zeros(imgshape)
+    last_index = 0
     with torch.no_grad():
         for idx, (batch) in tqdm(enumerate(data_loader)):
             batch_l, _ = transform(batch[0])
+            n = batch_l.shape[0]
             mu_c, _, sc_feat32, sc_feat16, sc_feat8, sc_feat4 = model.cond_encoder(batch_l)
             ab_out = model.decoder(mu_c, sc_feat32, sc_feat16, sc_feat8, sc_feat4)
             rgb_out = antitransform(torch.cat((batch_l, ab_out), dim=1))
-            new_rgb.append(rgb_out)
+            new_rgb[last_index:last_index + n] = rgb_out
+            last_index += n
     new_rgb = np.array(new_rgb).squeeze()
     np.save("rgb_{}_{}".format(split, "vae"), new_rgb)
     return
 
-generate_rgb(model, trainloader, split="train")
-generate_rgb(model, testloader, split="test")
+generate_rgb(model, trainloader, "train", train_set.tensors[0].shape)
+generate_rgb(model, testloader, "test", test_set.tensors[0].shape)
