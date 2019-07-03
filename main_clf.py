@@ -12,6 +12,7 @@ parser.add_argument("--bs", type=int, default=20, help="batch size (default 20)"
 parser.add_argument("--lr", type=float, default=2e-4, help="learning rate (default 2e-4)")
 parser.add_argument("--ds", type=str, default="stl10", help="select dataset, options: stl10, stl10m, stl10b, (default stl10)")
 args = parser.parse_args()
+print(args)
 
 seed = 1111
 seed_everything(seed)
