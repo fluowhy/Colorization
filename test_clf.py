@@ -1,5 +1,4 @@
 import argparse
-from tqdm import tqdm
 
 from model import *
 from utils import *
@@ -12,6 +11,28 @@ args = parser.parse_args()
 
 seed = 1111
 seed_everything(seed)
+dpi = 500
+
+if args.ds == "stl10":
+    titlename = "stl10"
+elif args.ds == "stl10b":
+    titlename = "stl10_baseline"
+elif args.ds == "stl10m":
+    titlename = "stl10_model"
+
+# loss plot
+
+loss = np.load("loss_{}.npy".format(args.ds))
+
+plt.clf()
+plt.plot(loss[:, 0], color="navy", label="train")
+plt.plot(loss[:, 1], color="red", label="test")
+plt.plot(loss[:, 2], color="green", label="val")
+plt.xlabel("epoch")
+plt.ylabel("cross entropy")
+plt.title("loss curves")
+plt.legend()
+plt.savefig("figures/loss_{}".format(args.ds), dpi=dpi)
 
 device = args.d
 
@@ -30,5 +51,6 @@ clf.load_state_dict(torch.load("models/clf_{}.pth".format(args.ds), map_location
 
 clf.eval()
 with torch.no_grad():
-    y_pred = 
-
+    y_pred = clf(test_images.to(device).float() / 255)
+    y_pred = y_pred.argmax(1)
+plot_confusion_matrix(test_labels.squeeze().cpu().numpy(), y_pred.cpu().numpy(), np.arange(10), normalize=True, title=titlename, cmap=plt.cm.Blues)
