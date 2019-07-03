@@ -21,7 +21,7 @@ device = args.d
 transform = torchvision.transforms.Compose([ToType(torch.float, device)])
 
 h, w = [96, 96]
-
+"""
 # testing only
 nclasses = 10
 N = 3 * nclasses
@@ -41,8 +41,53 @@ val_set = torch.utils.data.TensorDataset(val_images, val_labels)
 train_loader = torch.utils.data.DataLoader(train_set, batch_size=args.bs, shuffle=True)
 test_loader = torch.utils.data.DataLoader(test_set, batch_size=args.bs, shuffle=True)
 val_loader = torch.utils.data.DataLoader(val_set, batch_size=args.bs, shuffle=True)
+"""
 
-#classes = ["airplane", "bird", "car", "cat", "deer", "dog", "horse", "monkey", "ship", "truck"]
+# load data
+x_train = torchvision.datasets.STL10(root="../datasets/stl10", split="train", download=False)
+x_test = torchvision.datasets.STL10(root="../datasets/stl10", split="test", download=False)
+y_train = x_train.labels
+y_test = x_test.labels
+
+# select dataset to use
+if args.ds == "stl10":
+    x_train = x_train.data
+    x_test = x_test.data
+if args.ds == "stl10m":
+    x_train = np.load("rgb_train_vae.npy")
+    x_test = np.load("rgb_test_vae.npy")
+elif args.ds == "stl10b":
+    f = 0
+
+# load train and val index
+train_idx = np.load("train_idx.npy")
+val_idx = np.load("val_idx.npy")
+
+
+def numpy2torch(x, device, dtype):
+    return torch.tensor(x, device=device, dtype=dtype)
+
+# convert to tensors
+x_train = numpy2torch(x_train, "cpu", torch.uint8)
+x_test = numpy2torch(x_test, "cpu", torch.uint8)
+y_train = numpy2torch(y_train, "cpu", torch.long)
+y_test = numpy2torch(y_test, "cpu", torch.long)
+
+# split train val
+x_val = x_train[val_idx]
+x_train = x_train[train_idx]
+y_val = y_train[val_idx]
+y_train = y_train[train_idx]
+
+# make dataset
+train_dataset = torch.utils.data.TensorDataset(x_train, y_train)
+test_dataset = torch.utils.data.TensorDataset(x_test, y_test)
+val_dataset = torch.utils.data.TensorDataset(x_val, y_val)
+
+# make dataloader
+train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.bs, shuffle=True)
+test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=args.bs, shuffle=True)
+val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=args.bs, shuffle=True)
 
 wd = 0.
 

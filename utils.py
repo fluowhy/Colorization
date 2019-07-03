@@ -525,3 +525,23 @@ class ToType(object):
 
     def __call__(self, img):
         return img.type(dtype=self.dtype).to(self.device)
+
+
+class ToLAB(object):
+    def __init__(self, device):
+        self.device = device
+
+    def __call__(self, img):
+        img_lab = np.transpose(skimage.color.rgb2lab(np.transpose(img.cpu().numpy(), (0, 2, 3, 1))), (0, 3, 1, 2))
+        return torch.tensor(img_lab, device=self.device, dtype=torch.float)
+
+
+class ToRGB(object):
+    def __init__(self):
+        self.f = 1
+
+    def __call__(self, img):
+        img = np.transpose(img.cpu().numpy(), (0, 2, 3, 1))
+        for i in range(img.shape[0]):
+            img[i] = skimage.color.lab2rgb(img[i]) * 255
+        return np.transpose(img.astype(np.uint8), (0, 3, 1, 2))
