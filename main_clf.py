@@ -13,7 +13,8 @@ parser.add_argument("--lr", type=float, default=2e-4, help="learning rate (defau
 parser.add_argument("--ds", type=str, default="stl10", help="select dataset, options: stl10, stl10m, stl10b, (default stl10)")
 args = parser.parse_args()
 
-seed_everything(111)
+seed = 1111
+seed_everything(seed)
 
 device = args.d
 
@@ -69,11 +70,12 @@ def train_my_model(model, optimizer, dataloader):
 def eval_my_model(model, dataloader):
     model.eval()
     eval_loss = 0
-    for idx, (batch, labels) in enumerate(dataloader):
-        batch = transform(batch) / 255
-        y_pred = model(batch)
-        loss = ce(y_pred, labels.squeeze())
-        eval_loss += loss.item()
+    with torch.no_grad():
+        for idx, (batch, labels) in enumerate(dataloader):
+            batch = transform(batch) / 255
+            y_pred = model(batch)
+            loss = ce(y_pred, labels.squeeze())
+            eval_loss += loss.item()
     return eval_loss / (idx + 1)
 
 
