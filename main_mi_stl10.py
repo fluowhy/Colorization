@@ -19,8 +19,7 @@ def vae_loss(mu, logvar, pred, gt):
     bs = gt.shape[0]
     kl_loss = - 0.5*(1 + logvar - mu.pow(2) - logvar.exp()).sum(dim=1).mean()
     recon_loss_l2 = mse(pred.reshape((bs, -1)), gt.reshape((bs, -1))).mean()
-    recon_loss_l1 = mae(pred.reshape((bs, -1)), gt.reshape((bs, -1))).mean()
-    return kl_loss, recon_loss_l2 + recon_loss_l1
+    return kl_loss, recon_loss_l2
 
 
 def loss_function(x_out, x, x_gray):
