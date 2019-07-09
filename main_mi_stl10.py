@@ -36,6 +36,8 @@ parser.add_argument("--e", type=int, default=2, help="epochs (default 2)")
 parser.add_argument("--bs", type=int, default=20, help="batch size (default 20)")
 parser.add_argument("--lr", type=float, default=2e-4, help="learning rate (default 2e-4)")
 parser.add_argument("--pre", action="store_true", help="load pretrained model  (default False)")
+parser.add_argument("--nf", type=int, default=1, help="number of filters  (default 1)")
+parser.add_argument("--ld", type=int, default=2, help="size of latent space  (default 2)")
 
 args = parser.parse_args()
 device = args.d
@@ -60,11 +62,8 @@ trainloader = torch.utils.data.DataLoader(train_lab_set, batch_size=args.bs, shu
 testloader = torch.utils.data.DataLoader(test_lab_set, batch_size=args.bs, shuffle=True)
 valloader = torch.utils.data.DataLoader(val_lab_set, batch_size=args.bs, shuffle=True)
 
-if args.debug:
-    vae = VAE96(in_ab=2, in_l=1, nf=1, ld=2, ks=3, do=0.7)
-else:
-    vae = VAE96(in_ab=2, in_l=1, nf=64, ld=128, ks=3, do=0.7)  # 64, 128
-    vae.load_state_dict(torch.load("models/vae_mi_stl10.pth", map_location=args.d)) if args.pre else 0
+vae = VAE96(in_ab=2, in_l=1, nf=args.nf, ld=args.ld, ks=3, do=0.7)  # 64, 128
+vae.load_state_dict(torch.load("models/vae_mi_stl10.pth", map_location=args.d)) if args.pre else 0
 vae.to(device)
 wd = 0.
 dpi = 400
