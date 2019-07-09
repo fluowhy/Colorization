@@ -8,6 +8,17 @@ from sklearn.metrics import confusion_matrix
 from im import *
 
 
+def rgb2bgr(x):
+    xbgr = np.zeros(x.shape, dtype=np.uint8)
+    xr = x[:, :, 0]
+    xg = x[:, :, 1]
+    xb = x[:, :, 2]
+    xbgr[:, :, 0] = xb
+    xbgr[:, :, 1] = xg
+    xbgr[:, :, 2] = xr
+    return xbgr
+
+
 def plot_confusion_matrix(y_true, y_pred, labels, normalize=False, title=None, cmap=plt.cm.Blues, dpi=500):
 	"""
 	This function prints and plots the confusion matrix.

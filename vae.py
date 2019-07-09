@@ -218,7 +218,7 @@ class VAE96(nn.Module):
     x = self.dropout(x).squeeze()
     x = self.fc_cond_ab(x)
     mu = x[..., :self.ld]
-    logvar = x[:, self.ld:]
+    logvar = x[..., self.ld:]
     return mu, logvar, sc_feat32, sc_feat16, sc_feat8, sc_feat4
 
   def decoder(self, z, sc_feat32, sc_feat16, sc_feat8, sc_feat4):
