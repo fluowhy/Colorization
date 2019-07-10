@@ -110,10 +110,12 @@ for epoch in range(args.e):
     test_loss_vae /= (idx + 1)
     print("Epoch {} vae train loss {:.3f} test loss {:.3f}".format(epoch, train_loss_vae, test_loss_vae))
     if test_loss_vae < best_loss:
+        print("saving")
         torch.save(vae.state_dict(), "models/vae_mi_stl10.pth")
         best_loss = test_loss_vae
-        print("saving")
+        np.save("losses", losses)
     losses[epoch] = [train_loss_vae, test_loss_vae]
+np.save("losses", losses)
 
 plt.clf()
 plt.plot(losses[1:, 0], color="navy", label="train")
