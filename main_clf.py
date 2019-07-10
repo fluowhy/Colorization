@@ -10,7 +10,7 @@ parser.add_argument("--debug", action="store_true", help="select ot debugging st
 parser.add_argument("--e", type=int, default=2, help="epochs (default 2)")
 parser.add_argument("--bs", type=int, default=20, help="batch size (default 20)")
 parser.add_argument("--lr", type=float, default=2e-4, help="learning rate (default 2e-4)")
-parser.add_argument("--ds", type=str, default="stl10", help="select dataset, options: stl10, stl10m, stl10b, (default stl10)")
+parser.add_argument("--ds", type=str, default="original", help="select dataset, options: original, mine, other, (default original)")
 args = parser.parse_args()
 print(args)
 
@@ -22,53 +22,16 @@ device = args.d
 transform = torchvision.transforms.Compose([ToType(torch.float, device)])
 
 h, w = [96, 96]
-"""
-# testing only
-nclasses = 10
-N = 3 * nclasses
-
-train_images = torch.randint(low=0, high=256, size=(N, 3, h, w), dtype=torch.uint8, device="cpu")
-test_images = torch.randint(low=0, high=256, size=(N, 3, h, w), dtype=torch.uint8, device="cpu")
-val_images = torch.randint(low=0, high=256, size=(N, 3, h, w), dtype=torch.uint8, device="cpu")
-
-train_labels = torch.randint(low=0, high=nclasses, size=(N, 1), dtype=torch.long, device="cpu")
-test_labels = torch.randint(low=0, high=nclasses, size=(N, 1), dtype=torch.long, device="cpu")
-val_labels = torch.randint(low=0, high=nclasses, size=(N, 1), dtype=torch.long, device="cpu")
-
-train_set = torch.utils.data.TensorDataset(train_images, train_labels)
-test_set = torch.utils.data.TensorDataset(test_images, test_labels)
-val_set = torch.utils.data.TensorDataset(val_images, val_labels)
-
-train_loader = torch.utils.data.DataLoader(train_set, batch_size=args.bs, shuffle=True)
-test_loader = torch.utils.data.DataLoader(test_set, batch_size=args.bs, shuffle=True)
-val_loader = torch.utils.data.DataLoader(val_set, batch_size=args.bs, shuffle=True)
-"""
 
 # load data
-x_train = torchvision.datasets.STL10(root="../datasets/stl10", split="train", download=False)
-x_test = torchvision.datasets.STL10(root="../datasets/stl10", split="test", download=False)
-y_train = x_train.labels
-y_test = x_test.labels
-
-# select dataset to use
-if args.ds == "stl10":
-    print("STL10")
-    x_train = x_train.data
-    x_test = x_test.data
-if args.ds == "stl10m":
-    print("STL10m")
-    x_train = np.load("rgb_train_vae.npy")
-    x_test = np.load("rgb_test_vae.npy")
-elif args.ds == "stl10b":
-    print("STL10b")
+x_train = np.load("train_{}_rgb.npy".format(args.ds))
+x_test = np.load("test_{}_rgb.npy".format(args.ds))
+y_train = np.load("../datasets/stl10/grey/train/targets.npy")
+y_test = np.load("../datasets/stl10/grey/test/targets.npy")
 
 # load train and val index
 train_idx = np.load("train_idx.npy")
 val_idx = np.load("val_idx.npy")
-
-
-def numpy2torch(x, device, dtype):
-    return torch.tensor(x, device=device, dtype=dtype)
 
 # convert to tensors
 x_train = numpy2torch(x_train, "cpu", torch.uint8)

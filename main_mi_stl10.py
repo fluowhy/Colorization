@@ -1,11 +1,6 @@
-import torch
-import torchvision
-import matplotlib.pyplot as plt
 from tqdm import tqdm
 import argparse
 
-from im import *
-from model import *
 from utils import *
 from vae import *
 from mdn import *
@@ -38,7 +33,6 @@ parser.add_argument("--lr", type=float, default=2e-4, help="learning rate (defau
 parser.add_argument("--pre", action="store_true", help="load pretrained model  (default False)")
 parser.add_argument("--nf", type=int, default=1, help="number of filters  (default 1)")
 parser.add_argument("--ld", type=int, default=2, help="size of latent space  (default 2)")
-
 args = parser.parse_args()
 device = args.d
 print(args)
@@ -104,7 +98,7 @@ for epoch in range(args.e):
             #mi_loss = loss_function(color_out, cab, cl)
             kl_loss, recon_loss_l2 = vae_loss(mu, logvar, color_out, cab)
             l2_latent_space_mu = mse(mu_c, mu.detach()).mean()
-            l2_latent_space_logvar = mse(logvar_c, logvar.detach()).mean()
+            l2_latent_space_logvar = mse(logvar_c, logvar.detach() ).mean()
             loss_vae = kl_loss + recon_loss_l2 + l2_latent_space_mu + l2_latent_space_logvar
             test_loss_vae += loss_vae.item()
     test_loss_vae /= (idx + 1)

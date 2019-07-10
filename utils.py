@@ -8,6 +8,10 @@ from sklearn.metrics import confusion_matrix
 from im import *
 
 
+def numpy2torch(x, device, dtype):
+    return torch.tensor(x, device=device, dtype=dtype)
+
+
 def rgb2bgr(x):
     xbgr = np.zeros(x.shape, dtype=np.uint8)
     xr = x[:, :, 0]
