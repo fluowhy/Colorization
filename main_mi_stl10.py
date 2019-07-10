@@ -103,8 +103,8 @@ for epoch in range(args.e):
             mu, logvar, color_out, mu_c, logvar_c = vae(cab, cl)
             #mi_loss = loss_function(color_out, cab, cl)
             kl_loss, recon_loss_l2 = vae_loss(mu, logvar, color_out, cab)
-            l2_latent_space_mu = mse(mu_c, mu).mean()
-            l2_latent_space_logvar = mse(logvar_c, logvar).mean()
+            l2_latent_space_mu = mse(mu_c, mu.detach()).mean()
+            l2_latent_space_logvar = mse(logvar_c, logvar.detach()).mean()
             loss_vae = kl_loss + recon_loss_l2 + l2_latent_space_mu + l2_latent_space_logvar
             test_loss_vae += loss_vae.item()
     test_loss_vae /= (idx + 1)

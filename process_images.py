@@ -21,7 +21,6 @@ def generate_rgb(model, split):
             rgb_out = antitransform(torch.cat((img, ab_out), dim=1))
             rgb_out = np.transpose(rgb_out, (2, 3, 1, 0)).squeeze()
             cv2.imwrite("../datasets/stl10/rgb/mine/{}/img_{}.png".format(split, str(i)), rgb2bgr(rgb_out))
-            f = 0
     return
 
 
@@ -36,7 +35,7 @@ if __name__ == "__main__":
 
     device = args.d
 
-    model = VAE96(in_ab=2, in_l=1, nf=64, ld=128, ks=3, do=0.7)  # 64, 128
+    model = VAE96(in_ab=2, in_l=1, nf=32, ld=16, ks=3, do=0.7)  # 64, 128
     model.load_state_dict(torch.load("models/vae_mi_stl10.pth", map_location=args.d))
 
     antitransform = torchvision.transforms.Compose([UnNormalize(), ToRGB()])
