@@ -12,7 +12,7 @@ def generate_rgb(model, split):
     path = "../datasets/stl10/grey/{}".format(split)
     paths = os.listdir(path)
     with torch.no_grad():
-        for i in tqdm(range(len(paths) - 1)):
+        for i in tqdm(range(len(paths) - 1)[:100]):
             img_name = "{}/img_{}.png".format(path, str(i))
             img = torch.tensor(cv2.imread(img_name, 0), dtype=torch.float, device=args.d)
             img = img.unsqueeze(0).unsqueeze(0) / 255
