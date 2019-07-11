@@ -330,7 +330,7 @@ class VAELAB(nn.Module):
         z = self.tanh(self.dec_bn7(self.dec_conv7(z)))
         return z
 
-    def forward(self, color, greylevel):
+    def forward(self, greylevel):
         """
         sc_feat32, sc_feat16, sc_feat8, sc_feat4 = self.cond_encoder(greylevel)
         mu, logvar = self.encoder(color)

@@ -77,7 +77,7 @@ for epoch in range(args.e):
     for idx, (batch) in tqdm(enumerate(trainloader)):
         cl, cab = transform(batch[0])
         optimizer.zero_grad()
-        mu, logvar, color_out = vae(cab, cl)
+        mu, logvar, color_out = vae(cl)
         kl_loss, recon_loss_l2 = vae_loss(mu, logvar, color_out, cab)
         loss_vae = kl_loss + recon_loss_l2
         loss_vae.backward()
@@ -89,7 +89,7 @@ for epoch in range(args.e):
     with torch.no_grad():
         for idx, (batch) in tqdm(enumerate(testloader)):
             cl, cab = transform(batch[0])
-            mu, logvar, color_out = vae(cab, cl)
+            mu, logvar, color_out = vae(cl)
             kl_loss, recon_loss_l2 = vae_loss(mu, logvar, color_out, cab)
             loss_vae = kl_loss + recon_loss_l2
             test_loss_vae += loss_vae.item()
