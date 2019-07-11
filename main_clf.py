@@ -72,7 +72,7 @@ def train_my_model(model, optimizer, dataloader):
         optimizer.zero_grad()
         batch = transform(batch) / 255
         y_pred = model(batch)
-        loss = ce(y_pred, labels.squeeze())
+        loss = ce(y_pred, labels.squeeze().to(args.d))
         loss.backward()
         optimizer.step()
         train_loss += loss.item()
@@ -86,7 +86,7 @@ def eval_my_model(model, dataloader):
         for idx, (batch, labels) in enumerate(dataloader):
             batch = transform(batch) / 255
             y_pred = model(batch)
-            loss = ce(y_pred, labels.squeeze())
+            loss = ce(y_pred, labels.squeeze().to(args.d))
             eval_loss += loss.item()
     return eval_loss / (idx + 1)
 

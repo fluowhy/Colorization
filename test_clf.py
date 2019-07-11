@@ -34,6 +34,7 @@ plt.xlabel("epoch")
 plt.ylabel("cross entropy")
 plt.title("loss curves")
 plt.legend()
+plt.ylim([1.1, 2.4 ])
 plt.savefig("figures/loss_{}".format(args.ds), dpi=dpi)
 
 nclasses = 10
