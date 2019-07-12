@@ -6,22 +6,10 @@ from vae import *
 from mdn import *
 
 
-"""
-entrenar con bs=187
-"""
-
 def vae_loss(mu, logvar, pred, gt):
-    bs = gt.shape[0]
     kl_loss = - 0.5*(1 + logvar - mu.pow(2) - logvar.exp()).sum(dim=1).mean()
-    recon_loss_l2 = mse(pred.reshape((bs, -1)), gt.reshape((bs, -1))).mean()
+    recon_loss_l2 = mse(pred, gt).sum(-1).sum(-1).sum(-1).mean()
     return kl_loss, recon_loss_l2
-
-
-def loss_function(x_out, x, x_gray):
-    bs = x.shape[0]
-    mi_ch_a_g = mutual_info(x_out[:, 0].reshape(bs, -1), x_gray.reshape(bs, -1))
-    mi_ch_b_g = mutual_info(x_out[:, 1].reshape(bs, -1), x_gray.reshape(bs, -1))
-    return 1/mi_ch_a_g + 1/mi_ch_b_g
 
 
 parser = argparse.ArgumentParser(description="colorization")
@@ -65,9 +53,7 @@ h, w = val_lab.shape[2], val_lab.shape[3]
 
 print(count_parameters(vae))
 optimizer = torch.optim.Adam(vae.parameters(), lr=args.lr, weight_decay=wd)
-bce = torch.nn.BCELoss().to(device)
-mse = torch.nn.MSELoss(reduction="sum").to(device)
-mae = torch.nn.L1Loss(reduction="sum")
+mse = torch.nn.MSELoss(reduction="none").to(device)
 
 losses = np.zeros((args.e, 2))
 best_loss = np.inf
