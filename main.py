@@ -1,170 +1,109 @@
-import torch
-import torchvision
-import os
+from tqdm import tqdm
+import argparse
 
-import matplotlib.pyplot as plt
-import pytorch_colors as colors
-
-from im import *
-from model import *
 from utils import *
+from decoder import *
+from mdn import *
+
+
+"""
+entrenar con bs=187
+"""
+
+def vae_loss(mu, logvar, pred, gt):
+	bs = gt.shape[0]
+	kl_loss = - 0.5*(1 + logvar - mu.pow(2) - logvar.exp()).sum(dim=1).mean()
+	recon_loss_l2 = mse(pred.reshape((bs, -1)), gt.reshape((bs, -1))).mean()
+	return kl_loss, recon_loss_l2
+
+
+def loss_function(x_out, x, x_gray):
+	bs = x.shape[0]
+	mi_ch_a_g = mutual_info(x_out[:, 0].reshape(bs, -1), x_gray.reshape(bs, -1))
+	mi_ch_b_g = mutual_info(x_out[:, 1].reshape(bs, -1), x_gray.reshape(bs, -1))
+	return 1/mi_ch_a_g + 1/mi_ch_b_g
+
+
+parser = argparse.ArgumentParser(description="colorization")
+parser.add_argument("--d", type=str, default="cpu", help="select device (default cpu)")
+parser.add_argument("--debug", action="store_true", help="select ot debugging state  (default False)")
+parser.add_argument("--e", type=int, default=2, help="epochs (default 2)")
+parser.add_argument("--bs", type=int, default=20, help="batch size (default 20)")
+parser.add_argument("--lr", type=float, default=2e-4, help="learning rate (default 2e-4)")
+parser.add_argument("--pre", action="store_true", help="load pretrained model  (default False)")
+parser.add_argument("--nf", type=int, default=4, help="number of filters  (default 1)")
+args = parser.parse_args()
+device = args.d
+print(args)
+print(device)
 
 seed_everything()
 
-if not os.path.exists("figures"):
-    os.makedirs("figures")
-if not os.path.exists("models"):
-    os.makedirs("models")
+make_folder()
 
-cuda = True
-device = torch.device("cuda:0" if cuda and torch.cuda.is_available() else "cpu")
-print(device)
+train_lab = torch.tensor(np.load("../datasets/stl10/train_lab_1.npy"))
+test_lab = torch.tensor(np.load("../datasets/stl10/test_lab.npy"))
+val_lab = torch.tensor(np.load("../datasets/stl10/val_lab_1.npy"))
 
-h, w = [64, 64]
-
-transform = [torchvision.transforms.Resize((h, w)), torchvision.transforms.ToTensor()]
-
-trainset = torchvision.datasets.CIFAR10(root="../datasets/cifar10/train", train=True, download=True, transform=torchvision.transforms.Compose(transform))
-testset = torchvision.datasets.CIFAR10(root="../datasets/cifar10/test", train=False, download=True, transform=torchvision.transforms.Compose(transform))
-
-N = 10000
-full = False
-bs = 50
-lr = 2e-4
-wd = 0.
-epochs = 100
-ld = 2  # latent space dimension
-k = 4  # colorizations
-
-
-if full:
-	train_tensor = torch.tensor(trainset.data, dtype=torch.float, device=device) / 255
-	test_tensor = torch.tensor(testset.data, dtype=torch.float, device=device) / 255
-else:
-	train_tensor = torch.tensor(trainset.data[:N], dtype=torch.float, device=device)/255
-	test_tensor = torch.tensor(testset.data[:N], dtype=torch.float, device=device)/255
-
-train_tensor = train_tensor.transpose(1, -1)
-train_tensor = train_tensor.transpose(-1, -2)
-test_tensor = test_tensor.transpose(1, -1)
-test_tensor = test_tensor.transpose(-1, -2)
-
-train_lab = colors.rgb_to_lab(train_tensor)
-test_lab = colors.rgb_to_lab(test_tensor)
-train_lab = normalize_lab(train_lab).to(device)
-test_lab = normalize_lab(test_lab).to(device)
+transform = torchvision.transforms.Compose([ToType(torch.float, device), Normalize()])
 
 train_lab_set = torch.utils.data.TensorDataset(train_lab)
 test_lab_set = torch.utils.data.TensorDataset(test_lab)
+val_lab_set = torch.utils.data.TensorDataset(val_lab)
 
-trainloader = torch.utils.data.DataLoader(train_lab_set, batch_size=bs, shuffle=True)
-testloader = torch.utils.data.DataLoader(test_lab_set, batch_size=bs, shuffle=True)
+trainloader = torch.utils.data.DataLoader(train_lab_set, batch_size=args.bs, shuffle=True)
+testloader = torch.utils.data.DataLoader(test_lab_set, batch_size=args.bs, shuffle=True)
+valloader = torch.utils.data.DataLoader(val_lab_set, batch_size=args.bs, shuffle=True)
 
-classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
-
-model = CONVAE(2, 32, 3, ld)
-gmm = CONVGMM(1, 32, 5, 1024, k, ld)
-print(count_parameters(model))
-print(count_parameters(gmm))
-"""
-if torch.cuda.device_count() > 1:
-  print("# gpus: {}".format(torch.cuda.device_count()))
-  model = torch.nn.DataParallel(model)
-  gmm = torch.nn.DataParallel(gmm)
-"""
-
+model = DEC(out_ch=2, in_ch=1, nf=args.nf, ks=3)
+model.load_state_dict(torch.load("models/dec.pth", map_location=args.d)) if args.pre else 0
 model.to(device)
-gmm.to(device)
+wd = 0.
+dpi = 400
+h, w = val_lab.shape[2], val_lab.shape[3]
 
-optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=wd)
-optimizer_gmm = torch.optim.Adam(gmm.parameters(), lr=lr, weight_decay=wd)
-
+print(count_parameters(model))
+optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=wd)
 bce = torch.nn.BCELoss().to(device)
-mse = torch.nn.MSELoss().to(device)
-gmml = GMMLoss(ld)
+mse = torch.nn.MSELoss(reduction="none").to(device)
+mae = torch.nn.L1Loss(reduction="none").to(device)
 
-
-def loss_function(x_out, x, x_gray, lmi=0.5):
-	bs = x.shape[0]
-	ch_a_flat_pred = x_out[:, 0].reshape(bs, -1)
-	ch_b_flat_pred = x_out[:, 1].reshape(bs, -1)
-	loss_a = mse(ch_a_flat_pred, x[:, 0].reshape(bs, -1))
-	loss_b = mse(ch_b_flat_pred, x[:, 1].reshape(bs, -1))
-	mi_ch_a_g = mi(ch_a_flat_pred, x_gray.reshape(bs, -1), bw=2)
-	mi_ch_b_g = mi(ch_b_flat_pred, x_gray.reshape(bs, -1), bw=2)
-	return loss_a + loss_b + 1/mi_ch_a_g + 1/mi_ch_b_g
-
-# auto encoder training
-
-for epoch in range(epochs):
+def train_my_model(model, optimizer, dataloader):
+	train_loss = 0
 	model.train()
-	gmm.train()
-	train_loss_ae = 0
-	train_loss_gmm = 0
-	for idx, batch in enumerate(trainloader):
-		batch = batch[0]
-		cL = batch[:, 0].unsqueeze(1)
-		cab = batch[:, 1:]
+	for idx, (batch) in tqdm(enumerate(dataloader)):
+		cl, cab = transform(batch[0])
 		optimizer.zero_grad()
-		optimizer_gmm.zero_grad()
-		output, z = model(cab)
-		z = z.detach().clone()
-		#mu, log_s2, w = gmm(cL)
-		loss_ae = loss_function(output, cab, cL)
-		#loss_gmm = gmml(mu, log_s2, w, z)
-		loss_ae.backward()
-		#loss_gmm.backward()
+		ab_pred = model(cl)
+		loss = mse(ab_pred, cab).sum(-1).sum(-1).sum(-1).mean()
+		loss.backward()
 		optimizer.step()
-		#optimizer_gmm.step()
-		train_loss_ae += loss_ae.item()
-		#train_loss_gmm += loss_gmm.item()
-	train_loss_ae /= (idx + 1)
-	#train_loss_gmm /= (idx + 1)
+		train_loss += loss.item()
+	train_loss /= (idx + 1)
+	return train_loss
+
+def eval_my_model(model, dataloader):
 	model.eval()
-	gmm.eval()
-	test_loss_ae = 0
-	test_loss_gmm = 0
+	test_loss = 0
 	with torch.no_grad():
-		for idx, batch in enumerate(testloader):
-			batch = batch[0]
-			cL = batch[:, 0].unsqueeze(1)
-			cab = batch[:, 1:]
-			output, z = model(cab)
-			z = z.detach().clone()
-			#mu, log_s2, w = gmm(cL)
-			loss_ae = loss_function(output, cab, cL)
-			#loss_gmm = gmml(mu, log_s2, w, z)
-			test_loss_ae += loss_ae.item()
-			#test_loss_gmm += loss_gmm.item()
-	test_loss_ae /= (idx + 1)
-	#test_loss_gmm /= (idx + 1)
-	print("Epoch {} AE train loss {:.3f} test loss {:.3f} | GMM train loss {:.3f} test loss {:.3f}".format(epoch,
-																										   train_loss_ae,
-																										   test_loss_ae,
-																										   train_loss_gmm,
-																										   test_loss_gmm))
+		for idx, (batch) in tqdm(enumerate(dataloader)):
+			cl, cab = transform(batch[0])
+			ab_pred = model(cl)
+			loss = mse(ab_pred, cab).sum(-1).sum(-1).sum(-1).mean()
+			test_loss += loss.item()
+	test_loss /= (idx + 1)
+	return test_loss
 
-n = 10
-selected = np.random.choice(test_lab.shape[0], size=n, replace=False)
-model.eval()
-gmm.eval()
-img_lab = torch.zeros((k, n, 3, test_lab.shape[2], test_lab.shape[2]))
-img_rgb = np.zeros((k, n, 3, test_lab.shape[2], test_lab.shape[2]))
-with torch.no_grad():
-	z, _, _ = gmm(test_lab[selected, 0].unsqueeze(1))
-	for i in range(k):
-		ab = model.decode(z[:, :, i].reshape((z.shape[0], z.shape[1], 1, 1)))
-		img_lab[i, :, 1] = ab[:, 0]
-		img_lab[i, :, 2] = ab[:, 1]
-		img_lab[i, :, 0] = test_lab[selected, 0]
-		img_rgb[i] = unnormalize_and_lab_2_rgb(img_lab[i])
-		for j in range(n):
-			plt.imshow(np.transpose(img_rgb[i, j], (1, 2, 0)))
-			plt.savefig("figures/im_{}_colorization_{}".format(j, i), dpi=400)
-
-# TODO: validation model saving
-# TODO: add one image processing
-# TODO: save best model
-# TODO try MI between L,a and L,b
-# TODO: add real image
-# TODO fix gmm high dim
+losses = np.zeros((args.e, 2))
+best_loss = np.inf
+for epoch in range(args.e):
+	train_loss = train_my_model(model, optimizer, trainloader)
+	test_loss = eval_my_model(model, testloader)
+	losses[epoch] = [train_loss, test_loss]
+	print("Epoch {} vae train loss {:.3f} test loss {:.3f}".format(epoch, train_loss, test_loss))
+	if test_loss < best_loss:
+		print("Saving")
+		torch.save(model.state_dict(), "models/dec.pth")
+		best_loss = test_loss
+		np.save("losses", losses)
+np.save("losses", losses)

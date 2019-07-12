@@ -11,9 +11,8 @@ entrenar con bs=187
 """
 
 def vae_loss(mu, logvar, pred, gt):
-    bs = gt.shape[0]
     kl_loss = - 0.5*(1 + logvar - mu.pow(2) - logvar.exp()).sum(dim=1).mean()
-    recon_loss_l2 = mse(pred.reshape((bs, -1)), gt.reshape((bs, -1))).mean()
+    recon_loss_l2 = mse(pred, gt).sum(-1).sum(-1).sum(-1).mean()
     return kl_loss, recon_loss_l2
 
 
@@ -65,11 +64,7 @@ h, w = val_lab.shape[2], val_lab.shape[3]
 
 print(count_parameters(vae))
 optimizer = torch.optim.Adam(vae.parameters(), lr=args.lr, weight_decay=wd)
-bce = torch.nn.BCELoss().to(device)
-mse = torch.nn.MSELoss(reduction="sum").to(device)
-mae = torch.nn.L1Loss(reduction="sum")
-# mutual_info = MutualInformation(2, 1.01, True, True).to(device)
-# lam = 1
+mse = torch.nn.MSELoss(reduction="none").to(device)
 
 losses = np.zeros((args.e, 2))
 best_loss = np.inf
@@ -80,10 +75,9 @@ for epoch in range(args.e):
         cl, cab = transform(batch[0])
         optimizer.zero_grad()
         mu, logvar, color_out, mu_c, logvar_c = vae(cab, cl)
-        #mi_loss = loss_function(color_out, cab, cl)
         kl_loss, recon_loss_l2 = vae_loss(mu, logvar, color_out, cab)
-        l2_latent_space_mu = mse(mu_c, mu.detach()).mean()
-        l2_latent_space_logvar = mse(logvar_c, logvar.detach()).mean()
+        l2_latent_space_mu = mse(mu_c, mu.detach()).sum(-1).mean()
+        l2_latent_space_logvar = mse(logvar_c, logvar.detach()).sum(-1).mean()
         loss_vae = kl_loss + recon_loss_l2 + l2_latent_space_mu + l2_latent_space_logvar
         loss_vae.backward()
         optimizer.step()
@@ -95,10 +89,9 @@ for epoch in range(args.e):
         for idx, (batch) in tqdm(enumerate(testloader)):
             cl, cab = transform(batch[0])
             mu, logvar, color_out, mu_c, logvar_c = vae(cab, cl)
-            #mi_loss = loss_function(color_out, cab, cl)
             kl_loss, recon_loss_l2 = vae_loss(mu, logvar, color_out, cab)
-            l2_latent_space_mu = mse(mu_c, mu.detach()).mean()
-            l2_latent_space_logvar = mse(logvar_c, logvar.detach() ).mean()
+            l2_latent_space_mu = mse(mu_c, mu.detach()).sum(-1).mean()
+            l2_latent_space_logvar = mse(logvar_c, logvar.detach() ).sum(-1).mean()
             loss_vae = kl_loss + recon_loss_l2 + l2_latent_space_mu + l2_latent_space_logvar
             test_loss_vae += loss_vae.item()
     test_loss_vae /= (idx + 1)
