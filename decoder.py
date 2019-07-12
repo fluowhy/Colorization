@@ -16,6 +16,6 @@ class DEC(torch.nn.Module):
 
     def forward(self, x):
         h = self.relu(self.bn1(self.conv1(x)))
-        h = self.relu(self.bn2(self.conv2(x)))
+        h = self.relu(self.bn2(self.conv2(h)))
         out = self.tanh(self.conv3(h))
         return out
