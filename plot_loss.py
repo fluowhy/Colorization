@@ -33,11 +33,7 @@ def generate_rgb(model, split):
                 img = img.unsqueeze(0).unsqueeze(0) / 255
                 mu_c, _, sc_feat32, sc_feat16, sc_feat8, sc_feat4 = model.cond_encoder(img)
                 ab_out = model.decoder(mu_c.unsqueeze(0), sc_feat32, sc_feat16, sc_feat8, sc_feat4)
-                #rgb_out = torch.zeros((1, 3, 96, 96))
-                #rgb_out[:, 0] = img
-                #rgb_out[:, 1:] = ab_out
                 rgb_out = antitransform(torch.cat((img, ab_out), dim=1))
-                #rgb_out = antitransform(rgb_out)
                 rgb_out = np.transpose(rgb_out, (2, 3, 1, 0)).squeeze()
                 cv2.imwrite("{}/img_{}.png".format(savepath, str(i)), rgb2bgr(rgb_out))
     elif args.model == "vaegen":
@@ -52,11 +48,7 @@ def generate_rgb(model, split):
                 sample = torch.randn(stddev.shape, device=stddev.device)
                 z = torch.add(mu, torch.mul(sample, stddev))
                 ab_out = model.decode(z.reshape((1, 16, 1, 1)), sc_feat32, sc_feat16, sc_feat8, sc_feat4)
-                #rgb_out = torch.zeros((1, 3, 96, 96))
-                #rgb_out[:, 0] = img
-                #rgb_out[:, 1:] = ab_out
                 rgb_out = antitransform(torch.cat((img, ab_out), dim=1))
-                #rgb_out = antitransform(rgb_out)
                 rgb_out = np.transpose(rgb_out, (2, 3, 1, 0)).squeeze()
                 cv2.imwrite("{}/img_{}.png".format(savepath, str(i)), rgb2bgr(rgb_out))
 
