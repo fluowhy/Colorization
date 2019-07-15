@@ -1,5 +1,6 @@
 from tqdm import tqdm
 import argparse
+import pandas as pd
 
 from utils import *
 from divcolor import *
@@ -78,6 +79,11 @@ trainloader = torch.utils.data.DataLoader(train_lab_set, batch_size=args.bs, shu
 testloader = torch.utils.data.DataLoader(test_lab_set, batch_size=args.bs, shuffle=True)
 valloader = torch.utils.data.DataLoader(val_lab_set, batch_size=args.bs, shuffle=True)
 
+# save hyperparameters
+df = {"nf": [args.nf], "hs": [args.hs]}
+df = pd.DataFrame(data=df)
+df.to_csv("vae_divcolor_params.csv", index=False)
+
 model = VAE(nf=args.nf, hs=args.hs)
 model.load_state_dict(torch.load("models/vae_divcolor.pth", map_location=args.d)) if args.pre else 0
 model.to(device)
@@ -100,5 +106,5 @@ for epoch in range(args.e):
 		print("Saving")
 		torch.save(model.state_dict(), "models/vae_divcolor.pth")
 		best_loss = test_loss
-		np.save("losses_dec", losses)
-np.save("losses_dec", losses)
+		np.save("losses_vae_divcolor", losses)
+np.save("losses_vae_divcolor", losses)

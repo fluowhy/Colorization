@@ -1,40 +1,42 @@
 from tqdm import tqdm
 import argparse
+import pandas as pd
 
 from utils import *
 from divcolor import *
 
 
-def vae_loss(mu, logvar, pred, gt):
-    kl_loss = - 0.5*(1 + logvar - mu.pow(2) - logvar.exp()).sum(dim=1).mean()
-    recon_loss_l2 = mse(pred, gt).sum(-1).sum(-1).sum(-1).mean()
-    return kl_loss, recon_loss_l2
+def eval_vae(vae, cl, cab):
+    vae.eval()
+    with torch.no_grad():
+        mu, _, _ = vae(cab, cl)
+    return mu
 
 
-def train_my_model(model, optimizer, dataloader):
+def train_my_model(model, vae, optimizer, dataloader):
     train_loss = 0
     model.train()
     for idx, (batch) in tqdm(enumerate(dataloader)):
         cl, cab = transform(batch[0])
         optimizer.zero_grad()
-        mu, logvar, ab_pred = model(cab, cl)
-        kl_loss, mse_loss = vae_loss(mu, logvar, ab_pred, cab)
-        loss = (kl_loss + mse_loss) * 0.5
+        z = model(cl)
+        mu = eval_vae(vae, cl, cab)
+        loss = mse(z, mu.detach()).sum(-1).mean()
         loss.backward()
         optimizer.step()
         train_loss += loss.item()
     train_loss /= (idx + 1)
     return train_loss
 
-def eval_my_model(model, dataloader):
+def eval_my_model(model, vae, dataloader):
     model.eval()
     test_loss = 0
     with torch.no_grad():
         for idx, (batch) in tqdm(enumerate(dataloader)):
             cl, cab = transform(batch[0])
-            mu, logvar, ab_pred = model(cab, cl)
-            kl_loss, mse_loss = vae_loss(mu, logvar, ab_pred, cab)
-            loss = (kl_loss + mse_loss) * 0.5
+            z = model(cl)
+            mu = eval_vae(vae, cl, cab)
+            loss = mse(z, mu.detach()).sum(-1).mean()
             test_loss += loss.item()
     test_loss /= (idx + 1)
     return test_loss
@@ -78,27 +80,43 @@ trainloader = torch.utils.data.DataLoader(train_lab_set, batch_size=args.bs, shu
 testloader = torch.utils.data.DataLoader(test_lab_set, batch_size=args.bs, shuffle=True)
 valloader = torch.utils.data.DataLoader(val_lab_set, batch_size=args.bs, shuffle=True)
 
-vae = VAE(nf=args.nf, hs=args.hs)
-vae.load_state_dict(torch.load("models/dec.pth", map_location=args.d)) if args.pre else 0
-model.to(device)
-print(count_parameters(model))
+# load vae hyperparameters
+
+params = pd.read_csv("vae_divcolor_params.csv")
+
+nf_vae = int(params["nf"].values[0])
+hs_vae = int(params["hs"].values[0])
+
+vae = VAE(nf=nf_vae, hs=hs_vae)
+vae.load_state_dict(torch.load("models/vae_divcolor.pth", map_location=args.d))
+vae.to(device)
+
+# save hyperparameters
+df = {"nf": [args.nf], "hs": [args.hs]}
+df = pd.DataFrame(data=df)
+df.to_csv("mdn_divcolor_params.csv", index=False)
+
+mdn = MDN(nf=args.nf, hs=args.hs)
+mdn.load_state_dict(torch.load("models/mdn.pth", map_location=args.d)) if args.pre else 0
+mdn.to(device)
+print(count_parameters(mdn))
 
 wd = 0.
 dpi = 400
 
-optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=wd)
+optimizer = torch.optim.Adam(mdn.parameters(), lr=args.lr, weight_decay=wd)
 mse = torch.nn.MSELoss(reduction="none").to(device)
 
 losses = np.zeros((args.e, 2))
 best_loss = np.inf
 for epoch in range(args.e):
-	train_loss = train_my_model(model, optimizer, trainloader)
-	test_loss = eval_my_model(model, testloader)
+	train_loss = train_my_model(mdn, vae, optimizer, trainloader)
+	test_loss = eval_my_model(mdn, vae, testloader)
 	losses[epoch] = [train_loss, test_loss]
 	print("Epoch {} vae train loss {:.3f} test loss {:.3f}".format(epoch, train_loss, test_loss))
 	if test_loss < best_loss:
 		print("Saving")
-		torch.save(model.state_dict(), "models/vae_divcolor.pth")
+		torch.save(mdn.state_dict(), "models/vae_divcolor.pth")
 		best_loss = test_loss
-		np.save("losses_dec", losses)
-np.save("losses_dec", losses)
+		np.save("losses_mdn_divcolor", losses)
+np.save("losses_mdn_divcolor", losses)
