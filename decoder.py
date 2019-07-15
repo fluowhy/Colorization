@@ -2,20 +2,30 @@ import torch
 
 
 class DEC(torch.nn.Module):
-    def __init__(self, out_ch, in_ch, nf, ks):
+    def __init__(self, out_ch, in_ch, nf, nlayers=3, ks=3):
         super(DEC, self).__init__()
-        self.relu = torch.nn.ReLU()
-        self.tanh = torch.nn.Tanh()
+        m = int(nlayers * 0.5)
+        nfilters = torch.zeros(nlayers, dtype=torch.int)
+        for i in range(m + 1):
+            nfilters[i] = 2 ** i
+            nfilters[- 1 - i] = 2 ** i
 
-        self.conv1 = torch.nn.Conv2d(in_ch, nf, ks, padding=int((ks - 1)*0.5))
-        self.bn1 = torch.nn.BatchNorm2d(nf)
-        self.conv2 = torch.nn.Conv2d(nf, nf, ks, padding=int((ks - 1)*0.5))
-        self.bn2 = torch.nn.BatchNorm2d(nf)
-        self.conv3 = torch.nn.Conv2d(nf, out_ch, ks, padding=int((ks - 1)*0.5))
+        layers = []
+        for i in range(nlayers):
+            if i == 0:
+                layers.append(torch.nn.Conv2d(in_ch, nfilters[i].item() * nf, ks, padding=int((ks - 1)*0.5)))
+                layers.append(torch.nn.BatchNorm2d(nfilters[i].item() * nf))
+                layers.append(torch.nn.ReLU())
+            elif i == nlayers - 1:
+                layers.append(torch.nn.Conv2d(nfilters[i - 1].item() * nf, out_ch, ks, padding=int((ks - 1) * 0.5)))
+                layers.append(torch.nn.Tanh())
+            else:
+                layers.append(torch.nn.Conv2d(nfilters[i - 1].item() * nf, nfilters[i].item() * nf, ks, padding=int((ks - 1) * 0.5)))
+                layers.append(torch.nn.BatchNorm2d(nfilters[i].item() * nf))
+                layers.append(torch.nn.ReLU())
+        self.net = torch.nn.Sequential(*layers)
 
 
     def forward(self, x):
-        h = self.relu(self.bn1(self.conv1(x)))
-        h = self.relu(self.bn2(self.conv2(h)))
-        out = self.tanh(self.conv3(h))
+        out = self.net(x)
         return out

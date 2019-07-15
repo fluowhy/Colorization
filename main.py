@@ -6,10 +6,6 @@ from decoder import *
 from mdn import *
 
 
-"""
-entrenar con bs=187
-"""
-
 def vae_loss(mu, logvar, pred, gt):
 	bs = gt.shape[0]
 	kl_loss = - 0.5*(1 + logvar - mu.pow(2) - logvar.exp()).sum(dim=1).mean()
@@ -41,9 +37,13 @@ seed_everything()
 
 make_folder()
 
-train_lab = torch.tensor(np.load("../datasets/stl10/train_lab_1.npy"))
-test_lab = torch.tensor(np.load("../datasets/stl10/test_lab.npy"))
-val_lab = torch.tensor(np.load("../datasets/stl10/val_lab_1.npy"))
+# train_lab = torch.tensor(np.load("../datasets/stl10/train_lab_1.npy"))
+# test_lab = torch.tensor(np.load("../datasets/stl10/test_lab.npy"))
+# val_lab = torch.tensor(np.load("../datasets/stl10/val_lab_1.npy"))
+
+train_lab = torch.randn((args.bs * 2, 3, 96, 96))
+test_lab = torch.randn((args.bs * 2, 3, 96, 96))
+val_lab = torch.randn((args.bs * 2, 3, 96, 96))
 
 transform = torchvision.transforms.Compose([ToType(torch.float, device), Normalize()])
 
@@ -58,11 +58,11 @@ valloader = torch.utils.data.DataLoader(val_lab_set, batch_size=args.bs, shuffle
 model = DEC(out_ch=2, in_ch=1, nf=args.nf, ks=3)
 model.load_state_dict(torch.load("models/dec.pth", map_location=args.d)) if args.pre else 0
 model.to(device)
+print(count_parameters(model))
+
 wd = 0.
 dpi = 400
-h, w = val_lab.shape[2], val_lab.shape[3]
 
-print(count_parameters(model))
 optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=wd)
 bce = torch.nn.BCELoss().to(device)
 mse = torch.nn.MSELoss(reduction="none").to(device)
