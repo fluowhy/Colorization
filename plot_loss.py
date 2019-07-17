@@ -12,7 +12,7 @@ def plot_loss(path, savename):
     plt.legend()
     plt.xlabel("epoch")
     plt.ylabel("loss")
-    plt.ylim([0, 300])
+    plt.ylim([0, 100])
     plt.savefig("figures/train_curve_{}".format(savename), dpi=dpi)
     return
 

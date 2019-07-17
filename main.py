@@ -27,7 +27,8 @@ parser.add_argument("--e", type=int, default=2, help="epochs (default 2)")
 parser.add_argument("--bs", type=int, default=20, help="batch size (default 20)")
 parser.add_argument("--lr", type=float, default=2e-4, help="learning rate (default 2e-4)")
 parser.add_argument("--pre", action="store_true", help="load pretrained model  (default False)")
-parser.add_argument("--nf", type=int, default=4, help="number of filters  (default 1)")
+parser.add_argument("--nf", type=int, default=4, help="number of filters  (default 4)")
+parser.add_argument("--nl", type=int, default=3, help="number of conv layers  (default 3)")
 args = parser.parse_args()
 device = args.d
 print(args)
@@ -55,7 +56,7 @@ trainloader = torch.utils.data.DataLoader(train_lab_set, batch_size=args.bs, shu
 testloader = torch.utils.data.DataLoader(test_lab_set, batch_size=args.bs, shuffle=True)
 valloader = torch.utils.data.DataLoader(val_lab_set, batch_size=args.bs, shuffle=True)
 
-model = DEC(out_ch=2, in_ch=1, nf=args.nf, ks=3)
+model = DEC(out_ch=2, in_ch=1, nf=args.nf, nlayers=args.nl, ks=3)
 model.load_state_dict(torch.load("models/dec.pth", map_location=args.d)) if args.pre else 0
 model.to(device)
 print(count_parameters(model))
