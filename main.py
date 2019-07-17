@@ -38,13 +38,9 @@ seed_everything()
 
 make_folder()
 
-# train_lab = torch.tensor(np.load("../datasets/stl10/train_lab_1.npy"))
-# test_lab = torch.tensor(np.load("../datasets/stl10/test_lab.npy"))
-# val_lab = torch.tensor(np.load("../datasets/stl10/val_lab_1.npy"))
-
-train_lab = torch.randn((args.bs * 2, 3, 96, 96))
-test_lab = torch.randn((args.bs * 2, 3, 96, 96))
-val_lab = torch.randn((args.bs * 2, 3, 96, 96))
+train_lab = torch.tensor(np.load("../datasets/stl10/train_lab_1.npy"))
+test_lab = torch.tensor(np.load("../datasets/stl10/test_lab.npy"))
+val_lab = torch.tensor(np.load("../datasets/stl10/val_lab_1.npy"))
 
 transform = torchvision.transforms.Compose([ToType(torch.float, device), Normalize()])
 
