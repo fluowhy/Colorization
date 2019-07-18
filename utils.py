@@ -14,7 +14,7 @@ def save_hyperparamters(names, values, savename):
 	for i, name in enumerate(names):
 		df[name] = [values[i]]
 	df = pd.DataFrame(data=df)
-	df.to_csv("{}.csv".format(savename), index=False)
+	df.to_csv("hyp/{}.csv".format(savename), index=False)
 	return
 
 
