@@ -19,6 +19,6 @@ def plot_loss(path, savename):
 
 if __name__ == "__main__":    
     dpi = 500
-    plot_loss("losses.npy", "vae")
-    plot_loss("losses_vae_lab.npy", "vaegen")
-    plot_loss("losses_dec.npy", "dec")
+    plot_loss("files/losses.npy", "vae")
+    plot_loss("files/losses_vae_lab.npy", "vaegen")
+    plot_loss("files/losses_dec.npy", "dec")
