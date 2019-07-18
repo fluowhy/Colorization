@@ -100,5 +100,4 @@ for epoch in range(args.e):
 		print("Saving")
 		torch.save(model.state_dict(), "models/dec.pth")
 		best_loss = test_loss
-		np.save("losses_dec", losses)
-np.save("losses_dec", losses)
+	np.save("files/losses_dec", losses)

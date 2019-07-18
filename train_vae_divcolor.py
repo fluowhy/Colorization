@@ -98,13 +98,12 @@ mse = torch.nn.MSELoss(reduction="none").to(device)
 losses = np.zeros((args.e, 2))
 best_loss = np.inf
 for epoch in range(args.e):
-	train_loss = train_my_model(model, optimizer, trainloader)
-	test_loss = eval_my_model(model, testloader)
-	losses[epoch] = [train_loss, test_loss]
-	print("Epoch {} vae train loss {:.3f} test loss {:.3f}".format(epoch, train_loss, test_loss))
-	if test_loss < best_loss:
-		print("Saving")
-		torch.save(model.state_dict(), "models/vae_divcolor.pth")
-		best_loss = test_loss
-		np.save("losses_vae_divcolor", losses)
-np.save("losses_vae_divcolor", losses)
+    train_loss = train_my_model(model, optimizer, trainloader)
+    test_loss = eval_my_model(model, testloader)
+    losses[epoch] = [train_loss, test_loss]
+    print("Epoch {} vae train loss {:.3f} test loss {:.3f}".format(epoch, train_loss, test_loss))
+    if test_loss < best_loss:
+        print("Saving")
+        torch.save(model.state_dict(), "models/vae_divcolor.pth")
+        best_loss = test_loss
+    np.save("files/losses_vae_divcolor", losses)

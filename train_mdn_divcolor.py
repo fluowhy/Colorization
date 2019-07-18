@@ -117,5 +117,4 @@ for epoch in range(args.e):
         print("Saving")
         torch.save(mdn.state_dict(), "models/vae_divcolor.pth")
         best_loss = test_loss
-        np.save("losses_mdn_divcolor", losses)
-    np.save("losses_mdn_divcolor", losses)
+    np.save("files/losses_mdn_divcolor", losses)
