@@ -12,7 +12,7 @@ from im import *
 def save_hyperparamters(names, values, savename):
 	df = {}
 	for i, name in enumerate(names):
-		df[name] = values[i]
+		df[name] = [values[i]]
 	df = pd.DataFrame(data=df)
 	df.to_csv("{}.csv".format(savename), index=False)
 	return
