@@ -115,7 +115,6 @@ class MDN(torch.nn.Module):
     self.nf = nf
     self.relu = torch.nn.ReLU()
 
-    # MDN Layers
     self.mdn_conv1 = torch.nn.Conv2d(1, nf, 5, stride=1, padding=2)
     self.mdn_bn1 = torch.nn.BatchNorm2d(nf)
     self.mdn_conv2 = torch.nn.Conv2d(nf, 2 * nf, 5, stride=1, padding=2)
@@ -133,7 +132,6 @@ class MDN(torch.nn.Module):
     self.mdn_dropout1 = torch.nn.Dropout(p=.7)
     self.mdn_fc1 = torch.nn.Linear(8 * 8 * nf, hs)
 
-  # define forward pass
   def forward(self, grey):
     x = self.relu(self.mdn_conv1(grey))
     x = self.mdn_bn1(x)
