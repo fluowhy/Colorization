@@ -86,7 +86,7 @@ if __name__ == "__main__":
         generate_rgb_vaegen(model, "train")
         generate_rgb_vaegen(model, "test")
     elif args.model == "dec":
-        model = DEC(out_ch=2, in_ch=1, nf=100, ks=3)
+        model = DEC(out_ch=2, in_ch=1, nf=64, nlayers=5, ks=3)
         model.load_state_dict(torch.load("models/dec.pth", map_location=args.d))
         generate_rgb_dec(model, "train")
         generate_rgb_dec(model, "test")

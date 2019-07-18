@@ -4,6 +4,7 @@ import random
 import os
 import skimage
 from sklearn.metrics import confusion_matrix
+import pandas as pd
 
 from im import *
 
@@ -11,7 +12,7 @@ from im import *
 def save_hyperparamters(names, values, savename):
 	df = {}
 	for i, name in enumerate(names):
-		fd["name"] = values[i]
+		df[name] = values[i]
 	df = pd.DataFrame(data=df)
 	df.to_csv("{}.csv".format(savename), index=False)
 	return
