@@ -29,3 +29,35 @@ class DEC(torch.nn.Module):
     def forward(self, x):
         out = self.net(x)
         return out
+
+
+class AE(torch.nn.Module):
+    def __init__(self, out_ch, in_ch, nf, ks=3):
+        super(AE, self).__init__()
+        self.encoder = torch.nn.Sequential(
+            torch.nn.Conv2d(in_ch, nf, ks, stride=2, padding=int(ks / 2)),
+            torch.nn.BatchNorm2d(nf),
+            torch.nn.ReLU(),
+            torch.nn.Conv2d(nf, int(nf * 2), ks, stride=2, padding=int(ks / 2)),
+            torch.nn.BatchNorm2d(int(nf * 2)),
+            torch.nn.ReLU(),
+            torch.nn.Conv2d(int(nf * 2), int(nf * 4), ks, stride=2, padding=int(ks / 2)),
+            torch.nn.BatchNorm2d(int(nf * 4)),
+            torch.nn.ReLU()
+        )
+
+        self.decoder = torch.nn.Sequential(
+            torch.nn.ConvTranspose2d(int(nf * 4), int(nf * 2), kernel_size=2, stride=2),
+            torch.nn.BatchNorm2d(int(nf * 2)),
+            torch.nn.ReLU(),
+            torch.nn.ConvTranspose2d(int(nf * 2), int(nf), kernel_size=2, stride=2),
+            torch.nn.BatchNorm2d(int(nf)),
+            torch.nn.ReLU(),
+            torch.nn.ConvTranspose2d(int(nf), int(out_ch), kernel_size=2, stride=2),
+            torch.nn.Tanh()
+        )
+
+    def forward(self, x):
+        h = self.encoder(x)
+        out = self.decoder(h)
+        return out

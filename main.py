@@ -75,7 +75,8 @@ values = [out_ch, in_ch, nf, nlayers, ks]
 save_hyperparamters(names, values, "model_dec")
 
 # define model
-model = DEC(out_ch=out_ch, in_ch=in_ch, nf=args.nf, nlayers=args.nl, ks=ks)
+# model = DEC(out_ch=out_ch, in_ch=in_ch, nf=args.nf, nlayers=args.nl, ks=ks)
+model = AE(out_ch, in_ch, nf, ks=ks)
 model.load_state_dict(torch.load("models/dec.pth", map_location=args.d)) if args.pre else 0
 model.to(device)
 print(count_parameters(model))
