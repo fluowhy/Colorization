@@ -1,2 +1,2 @@
 # Colorization
-Gray image colorization
+Grey image colorization
