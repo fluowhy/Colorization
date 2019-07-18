@@ -9,6 +9,15 @@ import pandas as pd
 from im import *
 
 
+def read_hyperparameters(savename):
+	params_df = pd.read_csv("hyp/{}.csv".format(savename))
+	names = params_df.columns
+	params = {}
+	for name in names:
+		params[name] = int(params_df[name].values[0])
+	return params
+
+
 def save_hyperparamters(names, values, savename):
 	df = {}
 	for i, name in enumerate(names):

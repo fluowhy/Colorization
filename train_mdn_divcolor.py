@@ -82,19 +82,16 @@ valloader = torch.utils.data.DataLoader(val_lab_set, batch_size=args.bs, shuffle
 
 # load vae hyperparameters
 
-params = pd.read_csv("vae_divcolor_params.csv")
+params = read_hyperparameters("model_divcolor_vae")
 
-nf_vae = int(params["nf"].values[0])
-hs_vae = int(params["hs"].values[0])
-
-vae = VAE(nf=nf_vae, hs=hs_vae)
+vae = VAE(nf=params["nf"], hs=params["hs"])
 vae.load_state_dict(torch.load("models/vae_divcolor.pth", map_location=args.d))
 vae.to(device)
 
 # save hyperparameters
-df = {"nf": [args.nf], "hs": [args.hs]}
-df = pd.DataFrame(data=df)
-df.to_csv("mdn_divcolor_params.csv", index=False)
+names = ["nf", "hs"]
+values = [args.nf, args.hs]
+save_hyperparamters(names, values, "model_divcolor_vae")
 
 mdn = MDN(nf=args.nf, hs=args.hs)
 mdn.load_state_dict(torch.load("models/mdn.pth", map_location=args.d)) if args.pre else 0
@@ -110,13 +107,13 @@ mse = torch.nn.MSELoss(reduction="none").to(device)
 losses = np.zeros((args.e, 2))
 best_loss = np.inf
 for epoch in range(args.e):
-	train_loss = train_my_model(mdn, vae, optimizer, trainloader)
-	test_loss = eval_my_model(mdn, vae, testloader)
-	losses[epoch] = [train_loss, test_loss]
-	print("Epoch {} vae train loss {:.3f} test loss {:.3f}".format(epoch, train_loss, test_loss))
-	if test_loss < best_loss:
-		print("Saving")
-		torch.save(mdn.state_dict(), "models/vae_divcolor.pth")
-		best_loss = test_loss
-		np.save("losses_mdn_divcolor", losses)
-np.save("losses_mdn_divcolor", losses)
+    train_loss = train_my_model(mdn, vae, optimizer, trainloader)
+    test_loss = eval_my_model(mdn, vae, testloader)
+    losses[epoch] = [train_loss, test_loss]
+    print("Epoch {} vae train loss {:.3f} test loss {:.3f}".format(epoch, train_loss, test_loss))
+    if test_loss < best_loss:
+        print("Saving")
+        torch.save(mdn.state_dict(), "models/vae_divcolor.pth")
+        best_loss = test_loss
+        np.save("losses_mdn_divcolor", losses)
+    np.save("losses_mdn_divcolor", losses)

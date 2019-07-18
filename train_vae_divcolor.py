@@ -80,9 +80,9 @@ testloader = torch.utils.data.DataLoader(test_lab_set, batch_size=args.bs, shuff
 valloader = torch.utils.data.DataLoader(val_lab_set, batch_size=args.bs, shuffle=True)
 
 # save hyperparameters
-df = {"nf": [args.nf], "hs": [args.hs]}
-df = pd.DataFrame(data=df)
-df.to_csv("vae_divcolor_params.csv", index=False)
+names = ["nf", "hs"]
+values = [args.nf, args.hs]
+save_hyperparamters(names, values, "model_divcolor_vae")
 
 model = VAE(nf=args.nf, hs=args.hs)
 model.load_state_dict(torch.load("models/vae_divcolor.pth", map_location=args.d)) if args.pre else 0
