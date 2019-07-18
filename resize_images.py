@@ -15,7 +15,7 @@ def resize_all_images(path, savepath):
     resized_lab = np.zeros((n, 64, 64, 3), dtype=np.int8)
     for i in tqdm(range(n)):
         resized_lab[i] = resize_image(img_lab[i])
-    resized_lab = np.transpose(resized_lab, (0, 2, 3, 1))
+    resized_lab = np.transpose(resized_lab, (0, 3, 1, 2))
     np.save(savepath, resized_lab)
     return
 
