@@ -6,18 +6,31 @@ from decoder import *
 from mdn import *
 
 
-def vae_loss(mu, logvar, pred, gt):
-	bs = gt.shape[0]
-	kl_loss = - 0.5*(1 + logvar - mu.pow(2) - logvar.exp()).sum(dim=1).mean()
-	recon_loss_l2 = mse(pred.reshape((bs, -1)), gt.reshape((bs, -1))).mean()
-	return kl_loss, recon_loss_l2
+def train_my_model(model, optimizer, dataloader):
+	train_loss = 0
+	model.train()
+	for idx, (batch) in tqdm(enumerate(dataloader)):
+		cl, cab = transform(batch[0])
+		optimizer.zero_grad()
+		ab_pred = model(cl)
+		loss = mse(ab_pred, cab).sum(-1).sum(-1).sum(-1).mean()
+		loss.backward()
+		optimizer.step()
+		train_loss += loss.item()
+	train_loss /= (idx + 1)
+	return train_loss
 
-
-def loss_function(x_out, x, x_gray):
-	bs = x.shape[0]
-	mi_ch_a_g = mutual_info(x_out[:, 0].reshape(bs, -1), x_gray.reshape(bs, -1))
-	mi_ch_b_g = mutual_info(x_out[:, 1].reshape(bs, -1), x_gray.reshape(bs, -1))
-	return 1/mi_ch_a_g + 1/mi_ch_b_g
+def eval_my_model(model, dataloader):
+	model.eval()
+	test_loss = 0
+	with torch.no_grad():
+		for idx, (batch) in tqdm(enumerate(dataloader)):
+			cl, cab = transform(batch[0])
+			ab_pred = model(cl)
+			loss = mse(ab_pred, cab).sum(-1).sum(-1).sum(-1).mean()
+			test_loss += loss.item()
+	test_loss /= (idx + 1)
+	return test_loss
 
 
 parser = argparse.ArgumentParser(description="colorization")
@@ -52,11 +65,23 @@ trainloader = torch.utils.data.DataLoader(train_lab_set, batch_size=args.bs, shu
 testloader = torch.utils.data.DataLoader(test_lab_set, batch_size=args.bs, shuffle=True)
 valloader = torch.utils.data.DataLoader(val_lab_set, batch_size=args.bs, shuffle=True)
 
-model = DEC(out_ch=2, in_ch=1, nf=args.nf, nlayers=args.nl, ks=3)
+# save model hyperparameters
+out_ch = 2
+in_ch = 1
+nf = args.nf
+nlayers = args.nl
+ks = 3
+names = ["out_ch", "in_ch", "nf", "nlayers", "ks"]
+values = [out_ch, in_ch, nf, nlayers, ks]
+save_hyperparamters(names, values, "model_dec")
+
+# define model
+model = DEC(out_ch=out_ch, in_ch=in_ch, nf=args.nf, nlayers=args.nl, ks=ks)
 model.load_state_dict(torch.load("models/dec.pth", map_location=args.d)) if args.pre else 0
 model.to(device)
 print(count_parameters(model))
 
+# define train conditions
 wd = 0.
 dpi = 400
 
@@ -64,32 +89,6 @@ optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=wd)
 bce = torch.nn.BCELoss().to(device)
 mse = torch.nn.MSELoss(reduction="none").to(device)
 mae = torch.nn.L1Loss(reduction="none").to(device)
-
-def train_my_model(model, optimizer, dataloader):
-	train_loss = 0
-	model.train()
-	for idx, (batch) in tqdm(enumerate(dataloader)):
-		cl, cab = transform(batch[0])
-		optimizer.zero_grad()
-		ab_pred = model(cl)
-		loss = mse(ab_pred, cab).sum(-1).sum(-1).sum(-1).mean()
-		loss.backward()
-		optimizer.step()
-		train_loss += loss.item()
-	train_loss /= (idx + 1)
-	return train_loss
-
-def eval_my_model(model, dataloader):
-	model.eval()
-	test_loss = 0
-	with torch.no_grad():
-		for idx, (batch) in tqdm(enumerate(dataloader)):
-			cl, cab = transform(batch[0])
-			ab_pred = model(cl)
-			loss = mse(ab_pred, cab).sum(-1).sum(-1).sum(-1).mean()
-			test_loss += loss.item()
-	test_loss /= (idx + 1)
-	return test_loss
 
 losses = np.zeros((args.e, 2))
 best_loss = np.inf

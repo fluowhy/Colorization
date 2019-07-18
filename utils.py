@@ -8,6 +8,15 @@ from sklearn.metrics import confusion_matrix
 from im import *
 
 
+def save_hyperparamters(names, values, savename):
+	df = {}
+	for i, name in enumerate(names):
+		fd["name"] = values[i]
+	df = pd.DataFrame(data=df)
+	df.to_csv("{}.csv".format(savename), index=False)
+	return
+
+
 def numpy2torch(x, device, dtype):
     return torch.tensor(x, device=device, dtype=dtype)
 
