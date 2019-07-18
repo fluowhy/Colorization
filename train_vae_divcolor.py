@@ -57,17 +57,17 @@ print(device)
 
 seed_everything()
 
-# train_lab = torch.tensor(np.load("../datasets/stl10/resized64/train_lab_1.npy"))
-# test_lab = torch.tensor(np.load("../datasets/stl10/resized64/test_lab.npy"))
-# val_lab = torch.tensor(np.load("../datasets/stl10/resized64/val_lab_1.npy"))
+train_lab = torch.tensor(np.load("../datasets/stl10/resized64/train_lab_1.npy"))
+test_lab = torch.tensor(np.load("../datasets/stl10/resized64/test_lab.npy"))
+val_lab = torch.tensor(np.load("../datasets/stl10/resized64/val_lab_1.npy"))
 
-h = 64
-w = 64
-c = 3
+# h = 64
+# w = 64
+# c = 3
 
-train_lab = torch.randn((args.bs, c, h, w))
-test_lab = torch.randn((args.bs, c, h, w))
-val_lab = torch.randn((args.bs, c, h, w))
+# train_lab = torch.randn((args.bs, c, h, w))
+# test_lab = torch.randn((args.bs, c, h, w))
+# val_lab = torch.randn((args.bs, c, h, w))
 
 transform = torchvision.transforms.Compose([ToType(torch.float, device), Normalize()])
 
