@@ -93,10 +93,10 @@ vae.to(device)
 # save hyperparameters
 names = ["nf", "hs"]
 values = [args.nf, args.hs]
-save_hyperparamters(names, values, "model_divcolor_vae")
+save_hyperparamters(names, values, "mdn_divcolor")
 
 mdn = MDN(nf=args.nf, hs=args.hs)
-mdn.load_state_dict(torch.load("models/mdn.pth", map_location=args.d)) if args.pre else 0
+mdn.load_state_dict(torch.load("models/mdn_divcolor.pth", map_location=args.d)) if args.pre else 0
 mdn.to(device)
 print(count_parameters(mdn))
 
@@ -115,6 +115,6 @@ for epoch in range(args.e):
     print("Epoch {} vae train loss {:.3f} test loss {:.3f}".format(epoch, train_loss, test_loss))
     if test_loss < best_loss:
         print("Saving")
-        torch.save(mdn.state_dict(), "models/vae_divcolor.pth")
+        torch.save(mdn.state_dict(), "models/mdn_divcolor.pth")
         best_loss = test_loss
     np.save("files/losses_mdn_divcolor", losses)

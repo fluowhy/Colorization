@@ -6,7 +6,6 @@ import torch
 class VAE(torch.nn.Module):
   def __init__(self, nf, hs):
     super(VAE, self).__init__()
-    self.h = 64
     self.hidden_size = hs  # 64
     self.nf = nf  # 128
     self.tanh = torch.nn.Tanh()
