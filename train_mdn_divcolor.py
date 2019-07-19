@@ -50,7 +50,6 @@ parser.add_argument("--bs", type=int, default=20, help="batch size (default 20)"
 parser.add_argument("--lr", type=float, default=2e-4, help="learning rate (default 2e-4)")
 parser.add_argument("--pre", action="store_true", help="load pretrained model  (default False)")
 parser.add_argument("--nf", type=int, default=4, help="number of filters  (default 4)")
-parser.add_argument("--hs", type=int, default=2, help="hidden size  (default 2)")
 args = parser.parse_args()
 device = args.d
 print(args)
@@ -95,7 +94,7 @@ names = ["nf", "hs"]
 values = [args.nf, args.hs]
 save_hyperparamters(names, values, "mdn_divcolor")
 
-mdn = MDN(nf=args.nf, hs=args.hs)
+mdn = MDN(nf=args.nf, hs=params["hs"])
 mdn.load_state_dict(torch.load("models/mdn_divcolor.pth", map_location=args.d)) if args.pre else 0
 mdn.to(device)
 print(count_parameters(mdn))
