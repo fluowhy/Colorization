@@ -91,7 +91,7 @@ vae.to(device)
 
 # save hyperparameters
 names = ["nf", "hs"]
-values = [args.nf, args.hs]
+values = [args.nf, params["hs"]]
 save_hyperparamters(names, values, "mdn_divcolor")
 
 mdn = MDN(nf=args.nf, hs=params["hs"])
