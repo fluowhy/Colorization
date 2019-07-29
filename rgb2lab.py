@@ -33,6 +33,7 @@ if __name__ == "__main__":
     img_test = np.load("../datasets/stl10/test.npy")
     img_train = np.load("../datasets/stl10/train_rgb.npy")
     img_val = np.load("../datasets/stl10/val_rgb.npy")
+    print(img_test.shape)
     images_lab = convert_rgb_to_lab(img_train)
     np.save("../datasets/stl10/train_lab", images_lab)
     images_lab = convert_rgb_to_lab(img_test)
