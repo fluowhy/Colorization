@@ -197,8 +197,8 @@ class MDNMod(nn.Module):
     self.mdn_fc1 = nn.Linear(4 * 4 * 64, self.hidden_size)
 
   # define forward pass
-  def forward(self, feats):
-    x = F.relu(self.mdn_conv1(feats))
+  def forward(self, x):
+    x = F.relu(self.mdn_conv1(x))
     x = self.mdn_bn1(x)
     x = F.relu(self.mdn_conv2(x))
     x = self.mdn_bn2(x)

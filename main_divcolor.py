@@ -1,36 +1,183 @@
 from tqdm import tqdm
 import argparse
 
-from utils import *
-from decoder import *
+from divcolor import *
 
 
-def train_my_model(model, optimizer, dataloader):
-	train_loss = 0
-	model.train()
-	for idx, (batch) in tqdm(enumerate(dataloader)):
-		cl, cab = transform(batch[0])
-		optimizer.zero_grad()
-		ab_pred = model(cl)
-		loss = mse(ab_pred, cab).sum(-1).sum(-1).sum(-1).mean()
-		loss.backward()
-		optimizer.step()
-		train_loss += loss.item()
-	train_loss /= (idx + 1)
-	return train_loss
+def vae_loss(mu, logvar, pred, gt, weights):
+	kl_loss = - 0.5*(1 + logvar - mu.pow(2) - logvar.exp()).sum(dim=1).mean()
+	l2_loss = mse(pred, gt).sum(1).sum(-1).sum(-1).mean()
+	w_l2_loss = (l2_loss / weights).sum(-1).sum(-1).mean()
+	l2_loss = l2_loss.sum(-1).sum(-1).mean()
+	return l2_loss, w_l2_loss, kl_loss
 
-def eval_my_model(model, dataloader):
-	model.eval()
-	test_loss = 0
-	with torch.no_grad():
-		for idx, (batch) in tqdm(enumerate(dataloader)):
-			cl, cab = transform(batch[0])
-			ab_pred = model(cl)
-			loss = mse(ab_pred, cab).sum(-1).sum(-1).sum(-1).mean()
-			test_loss += loss.item()
-	test_loss /= (idx + 1)
-	return test_loss
 
+def mdn_loss(mu, z, logvar):
+	l2_loss = 0.5 * (mse(mu, z) / logvar.exp()).sum(-1).mean()
+	return l2_loss
+
+
+class DivColor(object):
+	def __init__(self, device):
+		self.vae = VAEMod()
+		self.mdn = MDNMod()
+		self.best_loss_vae = np.inf
+		self.best_loss_mdn = np.inf
+		self.transform_vae =
+		self.transform_mdn =
+		self.device = device
+		return
+
+	def load_model(self):
+		return
+
+	def train_vae(self, dataloader):
+		self.vae.train()
+		total_train_loss = 0
+		l2_train_loss = 0
+		w_l2_train_loss = 0
+		kl_train_loss = 0
+		for idx, batch in enumerate(dataloader):
+			img_l, img_ab, img_weights = self.transform_vae(batch)  # int8->float32->normalize (01, -11, -11)->split l, ab, weights
+			mu, logvar, pred = self.vae(img_ab, img_l)
+			l2_loss, w_l2_loss, kl_loss = vae_loss(mu, logvar, pred, img_ab, img_weights)
+			loss = l2_loss + w_l2_loss + kl_loss
+			loss.backward()
+			self.optimizer_vae.step()
+			total_train_loss += loss.item()
+			l2_train_loss += l2_loss.item()
+			w_l2_train_loss += w_l2_loss.item()
+			kl_train_loss += kl_loss.item()
+		total_train_loss /= (idx + 1)
+		l2_train_loss /= (idx + 1)
+		w_l2_train_loss /= (idx + 1)
+		kl_train_loss /= (idx + 1)
+		return total_train_loss, l2_train_loss, w_l2_train_loss, kl_train_loss
+
+	def eval_vae(self, dataloader):
+		self.vae.eval()
+		total_eval_loss = 0
+		l2_eval_loss = 0
+		w_l2_eval_loss = 0
+		kl_eval_loss = 0
+		with torch.no_grad():
+			for idx, batch in enumerate(dataloader):
+				img_l, img_ab, img_weights = self.transform_vae(
+					batch)  # int8->float32->normalize (01, -11, -11)->split l, ab, weights
+				mu, logvar, pred = self.vae(img_ab, img_l)
+				l2_loss, w_l2_loss, kl_loss = vae_loss(mu, logvar, pred, img_ab, img_weights)
+				loss = l2_loss + w_l2_loss + kl_loss
+				total_eval_loss += loss.item()
+				l2_eval_loss += l2_loss.item()
+				w_l2_eval_loss += w_l2_loss.item()
+				kl_eval_loss += kl_loss.item()
+		total_eval_loss /= (idx + 1)
+		l2_eval_loss /= (idx + 1)
+		w_l2_eval_loss /= (idx + 1)
+		kl_eval_loss /= (idx + 1)
+		return total_eval_loss, l2_eval_loss, w_l2_eval_loss, kl_eval_loss
+
+	def train_mdn(self, dataloader):
+		self.mdn.train()
+		train_loss = 0
+		for idx, batch in enumerate(dataloader):
+			img_l, z, logvar = self.transform_mdn(
+				batch)  # int8->float32->normalize 01->split l, z, logvar->device
+			mu = self.mdn(img_l)
+			loss = mdn_loss(mu, z, logvar)
+			loss.backward()
+			self.optimizer_mdn.step()
+			train_loss += loss.item()
+		train_loss /= (idx + 1)
+		return train_loss
+
+	def eval_mdn(self, dataloader):
+		self.mdn.eval()
+		eval_loss = 0
+		with torch.no_grad():
+			for idx, batch in enumerate(dataloader):
+				img_l, z, logvar = self.transform_mdn(
+					batch)  # int8->float32->normalize 01->split l, z, logvar->device
+				mu = self.mdn(img_l)
+				loss = mdn_loss(mu, z, logvar)
+				eval_loss += loss.item()
+		eval_loss /= (idx + 1)
+		return eval_loss
+
+	def predict_one_image(self, path_in, path_out=None):
+		"""
+		Colorize one image.
+		:param path: str, image path
+		:return: none
+		"""
+		self.mdn.eval()
+		self.vae.eval()
+		dpi = 400
+		h, w = 64, 64
+		img = skimage.io.imread(path_in, as_gray=True)  # h, w
+		# normalize?
+		h_org, w_org = img.shape
+		img = skimage.transform.resize(img, (h, w))
+		img = torch.tensor(img, dtype=torch.float, device=self.device).unsqueeze(-1).unsqueeze(-1)  # 1, 1, h, w
+		with torch.no_grad():
+			z = self.mdn(img)
+			sc_feat32, sc_feat16, sc_feat8, sc_feat4 = self.vae.cond_encoder(img)
+		color_out = self.vae.decoder(z, sc_feat32, sc_feat16, sc_feat8, sc_feat4).squeeze()
+		color_out = color_out.cpu().numpy()
+		color_out = np.transpose(color_out, (1, 2, 0))
+		# un normalize
+		color_out = skimage.transform.resize(color_out, (h_org, w_org, 3))
+		fig = plt.figure(frameon=False)
+		fig.set_size_inches(w, h)
+		ax = plt.Axes(fig, [0., 0., 1., 1.])
+		ax.set_axis_off()
+		fig.add_axes(ax)
+		ax.imshow(color_out, aspect='normal')
+		fig.savefig(path_out, dpi)
+		return
+
+	def predict_images(self, x):
+		# TODO: write this function
+		return
+
+	def fit_vae(self, epochs, lr=2e-4, wd=0.):
+		self.optimizer_vae = torch.optim.Adam(self.vae.parameters(), lr=lr, weight_decay=wd)
+		self.vae_train_loss = np.zeros((epochs, 4))
+		self.vae_val_loss = np.zeros((epochs, 4))
+		for epoch in tqdm(range(epochs)):
+			total_train_loss, l2_train_loss, w_l2_train_loss, kl_train_loss = self.train_vae()
+			total_val_loss, l2_val_loss, w_l2_val_loss, kl_val_loss = self.eval_vae()
+			if total_val_loss < self.best_loss_vae:
+				torch.save(self.vae.state_dict(), "models/divcolor_vae.pth")
+				self.best_loss_vae = total_val_loss
+			self.vae_train_loss[epoch] = [total_train_loss, l2_train_loss, w_l2_train_loss, kl_train_loss]
+			self.vae_val_loss[epoch] = [total_val_loss, l2_val_loss, w_l2_val_loss, kl_val_loss]
+		return
+
+	def fit_mdn(self, epochs, lr=2e-4, wd=0.):
+		self.optimizer_mdn = torch.optim.Adam(self.mdn.parameters(), lr=lr, weight_decay=wd)
+		self.mdn_train_loss = np.zeros(epochs)
+		self.mdn_val_loss = np.zeros(epochs)
+		for epoch in tqdm(range(epochs)):
+			train_loss = self.train_mdn()
+			val_loss = self.eval_mdn()
+			if val_loss < self.best_loss_mdn:
+				torch.save(self.mdn.state_dict(), "models/divcolor_mdn.pth")
+				self.best_loss_mdn = val_loss
+			self.mdn_train_loss[epoch] = train_loss
+			self.mdn_val_loss[epoch] = val_loss
+		return
+
+	def make_latent_space(self, val_ab):
+		self.vae.eval()
+		# normalize and transform, etc
+		with torch.no_grad():
+			mu, logvar = self.vae.encoder(val_ab)
+		mu = mu.cpu().numpy()
+		logvar = logvar.cpu().numpy()
+		np.save("../datasets/stl10/train_latent", mu)
+		np.save("../datasets/stl10/train_latent", logvar)
+		return
 
 parser = argparse.ArgumentParser(description="colorization")
 parser.add_argument("--d", type=str, default="cpu", help="select device (default cpu)")
@@ -47,8 +194,6 @@ print(args)
 print(device)
 
 seed_everything()
-
-make_folder()
 
 train_lab = torch.tensor(np.load("../datasets/stl10/train_lab_1.npy"))
 test_lab = torch.tensor(np.load("../datasets/stl10/test_lab.npy"))
