@@ -9,28 +9,28 @@ def resize_image(img, h=64, w=64):
 
 
 def resize_all_images(path, savepath):
-    img_lab = np.load(path)
-    img_lab = np.transpose(img_lab, (0, 2, 3, 1))
-    n = len(img_lab)
-    resized_lab = np.zeros((n, 64, 64, 3), dtype=np.int8)
+    img_org = np.load(path)
+    img_org = np.transpose(img_org, (0, 2, 3, 1))
+    n = len(img_org)
+    img_resize = np.zeros((n, 64, 64, 3), dtype=np.int8)
     for i in tqdm(range(n)):
-        resized_lab[i] = resize_image(img_lab[i])
-    resized_lab = np.transpose(resized_lab, (0, 3, 1, 2))
-    np.save(savepath, resized_lab)
+        img_resize[i] = resize_image(img_org[i])
+    img_resize = np.transpose(img_resize, (0, 3, 1, 2))
+    np.save(savepath, img_resize)
     return
 
 
 if __name__ == "__main__":
-    savepath = "../datasets/stl10/resized64/train_lab_1.npy"
-    path = "../datasets/stl10/train_lab_1.npy"
+    savepath = "../datasets/stl10/train_rgb_64"
+    path = "../datasets/stl10/train_rgb.npy"
     resize_all_images(path, savepath)
 
-    savepath = "../datasets/stl10/resized64/test_lab.npy"
-    path = "../datasets/stl10/test_lab.npy"
+    savepath = "../datasets/stl10/test_rgb_64"
+    path = "../datasets/stl10/test.npy"
     resize_all_images(path, savepath)
 
-    savepath = "../datasets/stl10/resized64/val_lab_1.npy"
-    path = "../datasets/stl10/val_lab_1.npy"
+    savepath = "../datasets/stl10/val_rgb_64"
+    path = "../datasets/stl10/val_rgb.npy"
     resize_all_images(path, savepath)
 
 

@@ -1,5 +1,4 @@
 import numpy as np
-import matplotlib.pyplot as plt
 import skimage
 from tqdm import tqdm
 
@@ -30,14 +29,14 @@ def convert_rgb_to_lab(images_rgb):
 
 
 if __name__ == "__main__":
-    img_test = np.load("../datasets/stl10/test.npy")
-    img_train = np.load("../datasets/stl10/train_rgb.npy")
-    img_val = np.load("../datasets/stl10/val_rgb.npy")
+    img_test = np.load("../datasets/stl10/test_rgb_64.npy")
+    img_train = np.load("../datasets/stl10/train_rgb_64.npy")
+    img_val = np.load("../datasets/stl10/val_rgb_64.npy")
     print(img_test.shape)
     images_lab = convert_rgb_to_lab(img_train)
-    np.save("../datasets/stl10/train_lab", images_lab)
+    np.save("../datasets/stl10/train_lab_64", images_lab)
     images_lab = convert_rgb_to_lab(img_test)
-    np.save("../datasets/stl10/test_lab", images_lab)
+    np.save("../datasets/stl10/test_lab_64", images_lab)
     images_lab = convert_rgb_to_lab(img_val)
-    np.save("../datasets/stl10/val_lab", images_lab)
+    np.save("../datasets/stl10/val_lab_64", images_lab)
 
