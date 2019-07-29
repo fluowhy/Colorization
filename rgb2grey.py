@@ -15,7 +15,6 @@ def rgb2grey(split):
     return
 
 
-
 if __name__ == "__main__":
     rgb2grey("train")
     rgb2grey("val")
