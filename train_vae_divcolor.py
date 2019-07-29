@@ -57,17 +57,17 @@ print(device)
 
 seed_everything()
 
-# train_lab = torch.tensor(np.load("../datasets/stl10/resized64/train_lab_1.npy"))
-# test_lab = torch.tensor(np.load("../datasets/stl10/resized64/test_lab.npy"))
-# val_lab = torch.tensor(np.load("../datasets/stl10/resized64/val_lab_1.npy"))
+train_lab = torch.tensor(np.load("../datasets/stl10/resized64/train_lab_1.npy"))
+test_lab = torch.tensor(np.load("../datasets/stl10/resized64/test_lab.npy"))
+val_lab = torch.tensor(np.load("../datasets/stl10/resized64/val_lab_1.npy"))
 
-h = 64
-w = 64
-c = 3
+# h = 64
+# w = 64
+# c = 3
 
-train_lab = torch.randn((args.bs, c, h, w))
-test_lab = torch.randn((args.bs, c, h, w))
-val_lab = torch.randn((args.bs, c, h, w))
+# train_lab = torch.randn((args.bs, c, h, w))
+# test_lab = torch.randn((args.bs, c, h, w))
+# val_lab = torch.randn((args.bs, c, h, w))
 
 transform = torchvision.transforms.Compose([ToType(torch.float, device), Normalize()])
 
@@ -80,9 +80,9 @@ testloader = torch.utils.data.DataLoader(test_lab_set, batch_size=args.bs, shuff
 valloader = torch.utils.data.DataLoader(val_lab_set, batch_size=args.bs, shuffle=True)
 
 # save hyperparameters
-df = {"nf": [args.nf], "hs": [args.hs]}
-df = pd.DataFrame(data=df)
-df.to_csv("vae_divcolor_params.csv", index=False)
+names = ["nf", "hs"]
+values = [args.nf, args.hs]
+save_hyperparamters(names, values, "model_divcolor_vae")
 
 model = VAE(nf=args.nf, hs=args.hs)
 model.load_state_dict(torch.load("models/vae_divcolor.pth", map_location=args.d)) if args.pre else 0
@@ -98,13 +98,12 @@ mse = torch.nn.MSELoss(reduction="none").to(device)
 losses = np.zeros((args.e, 2))
 best_loss = np.inf
 for epoch in range(args.e):
-	train_loss = train_my_model(model, optimizer, trainloader)
-	test_loss = eval_my_model(model, testloader)
-	losses[epoch] = [train_loss, test_loss]
-	print("Epoch {} vae train loss {:.3f} test loss {:.3f}".format(epoch, train_loss, test_loss))
-	if test_loss < best_loss:
-		print("Saving")
-		torch.save(model.state_dict(), "models/vae_divcolor.pth")
-		best_loss = test_loss
-		np.save("losses_vae_divcolor", losses)
-np.save("losses_vae_divcolor", losses)
+    train_loss = train_my_model(model, optimizer, trainloader)
+    test_loss = eval_my_model(model, testloader)
+    losses[epoch] = [train_loss, test_loss]
+    print("Epoch {} vae train loss {:.3f} test loss {:.3f}".format(epoch, train_loss, test_loss))
+    if test_loss < best_loss:
+        print("Saving")
+        torch.save(model.state_dict(), "models/vae_divcolor.pth")
+        best_loss = test_loss
+    np.save("files/losses_vae_divcolor", losses)

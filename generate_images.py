@@ -19,8 +19,8 @@ def generate_rgb_vae(model, split):
             img = img.unsqueeze(0).unsqueeze(0) / 255
             mu_c, _, sc_feat32, sc_feat16, sc_feat8, sc_feat4 = model.cond_encoder(img)
             ab_out = model.decoder(mu_c.unsqueeze(0), sc_feat32, sc_feat16, sc_feat8, sc_feat4)
-            rgb_out = antitransform(torch.cat((img, ab_out), dim=1))
-            rgb_out = np.transpose(rgb_out, (2, 3, 1, 0)).squeeze()
+            rgb_out = antitransform(torch.cat((img, ab_out), dim=1)).squeeze()
+            rgb_out = np.transpose(rgb_out, (1, 2, 0))
             cv2.imwrite("{}/img_{}.png".format(savepath, str(i)), rgb2bgr(rgb_out))
     return
 
@@ -40,8 +40,8 @@ def generate_rgb_vaegen(model, split):
             sample = torch.randn(stddev.shape, device=stddev.device)
             z = torch.add(mu, torch.mul(sample, stddev))
             ab_out = model.decode(z.reshape((1, 16, 1, 1)), sc_feat32, sc_feat16, sc_feat8, sc_feat4)
-            rgb_out = antitransform(torch.cat((img, ab_out), dim=1))
-            rgb_out = np.transpose(rgb_out, (2, 3, 1, 0)).squeeze()
+            rgb_out = antitransform(torch.cat((img, ab_out), dim=1)).squeeze()
+            rgb_out = np.transpose(rgb_out, (1, 2, 0))
             cv2.imwrite("{}/img_{}.png".format(savepath, str(i)), rgb2bgr(rgb_out))
     return
 
@@ -57,8 +57,8 @@ def generate_rgb_dec(model, split):
             img = torch.tensor(cv2.imread(img_name, 0), dtype=torch.float, device=args.d)
             img = img.unsqueeze(0).unsqueeze(0) / 255
             ab_out = model(img)
-            rgb_out = antitransform(torch.cat((img, ab_out), dim=1))
-            rgb_out = np.transpose(rgb_out, (2, 3, 1, 0)).squeeze()
+            rgb_out = antitransform(torch.cat((img, ab_out), dim=1)).squeeze()
+            rgb_out = np.transpose(rgb_out, (1, 2, 0))
             cv2.imwrite("{}/img_{}.png".format(savepath, str(i)), rgb2bgr(rgb_out))
     return
 
@@ -66,7 +66,7 @@ def generate_rgb_dec(model, split):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="colorization")
     parser.add_argument("--d", type=str, default="cpu", help="select device (default cpu)")
-    parser.add_argument("--model", type=str, default="vae", help="select model: vae, vaegen (default vae)")
+    parser.add_argument("--model", type=str, default="dec", help="select model: vae, vaegen (default vae)")
     args = parser.parse_args()
 
     seed = 1111
@@ -86,8 +86,8 @@ if __name__ == "__main__":
         generate_rgb_vaegen(model, "train")
         generate_rgb_vaegen(model, "test")
     elif args.model == "dec":
-        model = DEC(out_ch=2, in_ch=1, nf=100, ks=3)
+        params = read_hyperparameters("model_dec")
+        model = AE(out_ch=params["out_ch"], in_ch=params["in_ch"], nf=params["nf"], ks=params["ks"])
         model.load_state_dict(torch.load("models/dec.pth", map_location=args.d))
         generate_rgb_dec(model, "train")
         generate_rgb_dec(model, "test")
-        

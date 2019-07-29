@@ -87,4 +87,4 @@ for epoch in range(args.e):
         best_loss = test_loss_vae
         np.save("losses_vae_lab", losses)
     losses[epoch] = [train_loss_vae, test_loss_vae]
-np.save("losses_vae_lab", losses)
+    np.save("files/losses_vae_lab", losses)

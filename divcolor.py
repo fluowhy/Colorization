@@ -10,7 +10,14 @@ class VAE(nn.Module):
   #define layers
   def __init__(self):
     super(VAE, self).__init__()
+<<<<<<< HEAD
     self.hidden_size = 64
+=======
+    self.hidden_size = hs  # 64
+    self.nf = nf  # 128
+    self.tanh = torch.nn.Tanh()
+    self.relu = torch.nn.ReLU()
+>>>>>>> f10f9da68eebded4ddfd19770f9ee821bbc36d02
 
     #Encoder layers
     self.enc_conv1 = nn.Conv2d(2, 128, 5, stride=2, padding=2)

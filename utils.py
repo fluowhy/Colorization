@@ -4,8 +4,27 @@ import random
 import os
 import skimage
 from sklearn.metrics import confusion_matrix
+import pandas as pd
 
 from im import *
+
+
+def read_hyperparameters(savename):
+	params_df = pd.read_csv("hyp/{}.csv".format(savename))
+	names = params_df.columns
+	params = {}
+	for name in names:
+		params[name] = int(params_df[name].values[0])
+	return params
+
+
+def save_hyperparamters(names, values, savename):
+	df = {}
+	for i, name in enumerate(names):
+		df[name] = [values[i]]
+	df = pd.DataFrame(data=df)
+	df.to_csv("hyp/{}.csv".format(savename), index=False)
+	return
 
 
 def numpy2torch(x, device, dtype):

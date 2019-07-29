@@ -12,13 +12,15 @@ def plot_loss(path, savename):
     plt.legend()
     plt.xlabel("epoch")
     plt.ylabel("loss")
-    plt.ylim([0, 100])
+    # plt.ylim([0, 100])
     plt.savefig("figures/train_curve_{}".format(savename), dpi=dpi)
     return
 
 
 if __name__ == "__main__":    
     dpi = 500
-    plot_loss("losses.npy", "vae")
-    plot_loss("losses_vae_lab.npy", "vaegen")
-    plot_loss("losses_dec.npy", "dec")
+    plot_loss("files/losses.npy", "vae")
+    plot_loss("files/losses_vae_lab.npy", "vaegen")
+    plot_loss("files/losses_dec.npy", "dec")
+    plot_loss("files/losses_mdn_divcolor.npy", "mdn_divcolor")
+    plot_loss("files/losses_vae_divcolor.npy", "vae_divcolor")
