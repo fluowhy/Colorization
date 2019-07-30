@@ -185,6 +185,7 @@ class DivColor(object):
             if total_val_loss < self.best_loss_vae:
                 torch.save(self.vae.state_dict(), "models/divcolor_vae.pth")
                 self.best_loss_vae = total_val_loss
+                print("Saving vae")
             self.vae_train_loss[epoch] = [total_train_loss, l2_train_loss, w_l2_train_loss, kl_train_loss]
             self.vae_val_loss[epoch] = [total_val_loss, l2_val_loss, w_l2_val_loss, kl_val_loss]
             np.save("files/divcolor_vae_train_loss", self.vae_train_loss)
@@ -201,6 +202,7 @@ class DivColor(object):
             if val_loss < self.best_loss_mdn:
                 torch.save(self.mdn.state_dict(), "models/divcolor_mdn.pth")
                 self.best_loss_mdn = val_loss
+                print("Saving mdn")
             self.mdn_train_loss[epoch] = train_loss
             self.mdn_val_loss[epoch] = val_loss
             np.save("files/divcolor_mdn_train_loss", self.mdn_train_loss)
