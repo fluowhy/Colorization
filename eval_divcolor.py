@@ -12,5 +12,6 @@ divcolor.load_model()
 
 val_grey = np.load("../datasets/stl10/val_grey_64.npy")
 
-divcolor.colorize_one_image("/home/mauricio/Pictures/cat.jpeg", "/home/mauricio/Pictures/cat_grey.png")
-divcolor.colorize_images(val_grey)
+divcolor.colorize_one_image("/home/mauricio/Pictures/cat.jpeg", "/home/mauricio/Pictures/cat_colorized.png")
+divcolor.colorize_one_image("/home/mauricio/Pictures/house.png", "/home/mauricio/Pictures/house_colorized.png")
+divcolor.colorize_images(val_grey[:10])
