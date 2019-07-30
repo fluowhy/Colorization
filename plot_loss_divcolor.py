@@ -5,13 +5,11 @@ import matplotlib.pyplot as plt
 def plot_loss_vae(train_loss, val_loss, dpi=400):
     l = 5
 
-    nepochs = np.nonzero(train_loss[:, 0] == 0)[0][0]
-
     plt.figure(figsize=(3 * l, l))
 
     plt.subplot(1, 3, 1)
-    plt.plot(train_loss[:nepochs, 1], color="navy", label="l2 train", linestyle="-")
-    plt.plot(val_loss[:nepochs, 1], color="red", label="l2 val", linestyle="-")
+    plt.plot(train_loss[:, 1], color="navy", label="l2 train", linestyle="-")
+    plt.plot(val_loss[:, 1], color="red", label="l2 val", linestyle="-")
     plt.grid(True)
     plt.legend()
     plt.xlabel("epoch")
@@ -19,8 +17,8 @@ def plot_loss_vae(train_loss, val_loss, dpi=400):
     plt.xlim([0, 30])
 
     plt.subplot(1, 3, 2)
-    plt.plot(train_loss[:nepochs, 2], color="navy", label="w_l2 train", linestyle="--")
-    plt.plot(val_loss[:nepochs, 2], color="red", label="w_l2 val", linestyle="--")
+    plt.plot(train_loss[:, 2], color="navy", label="w_l2 train", linestyle="--")
+    plt.plot(val_loss[:, 2], color="red", label="w_l2 val", linestyle="--")
     plt.grid(True)
     plt.legend()
     plt.xlabel("epoch")
@@ -28,8 +26,8 @@ def plot_loss_vae(train_loss, val_loss, dpi=400):
     plt.xlim([0, 30])
 
     plt.subplot(1, 3, 3)
-    plt.plot(train_loss[:nepochs, 3], color="navy", label="kl train", linestyle=":")
-    plt.plot(val_loss[:nepochs, 3], color="red", label="kl val", linestyle=":")
+    plt.plot(train_loss[:, 3], color="navy", label="kl train", linestyle=":")
+    plt.plot(val_loss[:, 3], color="red", label="kl val", linestyle=":")
     plt.grid(True)
     plt.legend()
     plt.xlabel("epoch")
@@ -42,10 +40,10 @@ def plot_loss_vae(train_loss, val_loss, dpi=400):
 
 def plot_loss_mdn(train_loss, val_loss, dpi=400):
     l = 5
-    nepochs = np.nonzero(train_loss == 0)[0][0]
+
     plt.figure(figsize=(l, l))
-    plt.plot(train_loss[:nepochs], color="navy", label="l2 train")
-    plt.plot(val_loss[:nepochs], color="red", label="l2 val")
+    plt.plot(train_loss, color="navy", label="l2 train")
+    plt.plot(val_loss, color="red", label="l2 val")
     plt.grid(True)
     plt.legend()
     plt.xlabel("epoch")
