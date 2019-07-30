@@ -387,63 +387,58 @@ def getweights(img, binedges, lossweights):
 
 
 class Normalize(object):
-    """Crop randomly the image in a sample.
+	def __init__(self, device):
+		self.cte = torch.tensor([100, 128, 128], dtype=torch.float, device=device).unsqueeze(0).unsqueeze(-1).unsqueeze(-1)
 
-    Args:
-        output_size (tuple or int): Desired output size. If int, square crop
-            is made.
-    """
-
-    def __init__(self):
-        self.l = [0., 100.]
-        self.ab = [- 128., 127.]
-
-    def __call__(self, img):
-        return normalize(img[:, 0], self.l).unsqueeze(1), normalize(img[:, 1:], self.ab)
+	def __call__(self, x):
+		x = x / self.cte
+		return x[:, 0].unsqueeze(1), x[:, 1:]
 
 
 class UnNormalize(object):
-    """Crop randomly the image in a sample.
+	def __init__(self):
+		self.l = [0., 100.]
+		self.ab = [- 128., 127.]
 
-    Args:
-        output_size (tuple or int): Desired output size. If int, square crop
-            is made.
-    """
-
-    def __init__(self):
-        self.l = [0., 100.]
-        self.ab = [- 128., 127.]
-
-    def __call__(self, img):
-        img[:, 0] = unnormalize(img[:, 0], self.l)
-        img[:, 1:] = unnormalize(img[:, 1:], self.ab)
-        return img
+	def __call__(self, img):
+		img[:, 0] = unnormalize(img[:, 0], self.l)
+		img[:, 1:] = unnormalize(img[:, 1:], self.ab)
+		return img
 
 
 class ToType(object):
-    def __init__(self, dtype, device):
-        self.dtype = dtype
-        self.device = device
+	def __init__(self, dtype, device):
+		self.dtype = dtype
+		self.device = device
 
-    def __call__(self, img):
-        return img.type(dtype=self.dtype).to(self.device)
+	def __call__(self, img):
+		return img.type(dtype=self.dtype).to(self.device)
+
+
+class GreyTransform(object):
+	def __init__(self, dtype, device):
+		self.dtype = dtype
+		self.device = device
+
+	def __call__(self, x):
+		return (x.type(dtype=self.dtype).to(self.device) / 255).unsqueeze(1)
 
 
 class ToLAB(object):
-    def __init__(self, device):
-        self.device = device
+	def __init__(self, device):
+		self.device = device
 
-    def __call__(self, img):
-        img_lab = np.transpose(skimage.color.rgb2lab(np.transpose(img.cpu().numpy(), (0, 2, 3, 1))), (0, 3, 1, 2))
-        return torch.tensor(img_lab, device=self.device, dtype=torch.float)
+	def __call__(self, img):
+		img_lab = np.transpose(skimage.color.rgb2lab(np.transpose(img.cpu().numpy(), (0, 2, 3, 1))), (0, 3, 1, 2))
+		return torch.tensor(img_lab, device=self.device, dtype=torch.float)
 
 
 class ToRGB(object):
-    def __init__(self):
-        self.f = 1
+	def __init__(self):
+		self.f = 1
 
-    def __call__(self, img):
-        img = np.transpose(img.cpu().numpy(), (0, 2, 3, 1))
-        for i in range(img.shape[0]):
-            img[i] = skimage.color.lab2rgb(img[i]) * 255
-        return np.transpose(img.astype(np.uint8), (0, 3, 1, 2))
+	def __call__(self, img):
+		img = np.transpose(img.cpu().numpy(), (0, 2, 3, 1))
+		for i in range(img.shape[0]):
+			img[i] = skimage.color.lab2rgb(img[i]) * 255
+		return np.transpose(img.astype(np.uint8), (0, 3, 1, 2))
