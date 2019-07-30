@@ -33,8 +33,10 @@ if __name__ == "__main__":
     b = concat[:, 2].reshape(-1, 1)
 
     hist, edges = np.histogramdd(np.hstack((l, a, b)),
-                                 density=True,
                                  bins=(np.arange(102) - 0.5, np.arange(256) - 0.5, np.arange(256) - 0.5))
+
+    hist += 1e-5
+    hist /= hist.max()
 
     train_hist_values = make_lab_hist_image_set(hist, train_lab)
     val_hist_values = make_lab_hist_image_set(hist, val_lab)
