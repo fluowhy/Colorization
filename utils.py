@@ -397,10 +397,11 @@ class Normalize(object):
 
 class UnNormalize(object):
 	def __init__(self, device):
-		self.cte = torch.tensor([100, 128, 128], dtype=torch.float, device=device).unsqueeze(0).unsqueeze(-1).unsqueeze(-1)
+		self.cte = torch.tensor([1, 0.5, 0.5], dtype=torch.float, device=device).unsqueeze(0).unsqueeze(-1).unsqueeze(-1)
+		self.cte_sum = torch.tensor([0, 1, 1], dtype=torch.float, device=device).unsqueeze(0).unsqueeze(-1).unsqueeze(-1)
 
 	def __call__(self, x):
-		return x * self.cte
+		return (x + self.cte_sum) * self.cte * 255
 
 
 class ToType(object):
