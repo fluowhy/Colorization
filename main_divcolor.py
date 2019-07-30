@@ -287,7 +287,8 @@ if __name__ == "__main__":
     parser.add_argument("--d", type=str, default="cpu", help="select device (default cpu)")
     parser.add_argument("--e", type=int, default=2, help="epochs (default 2)")
     parser.add_argument("--bs", type=int, default=100, help="batch size (default 20)")
-    parser.add_argument("--lr", type=float, default=2e-4, help="learning rate (default 2e-4)")
+    parser.add_argument("--lr_vae", type=float, default=2e-4, help="learning rate (default 2e-4)")
+    parser.add_argument("--lr_mdn", type=float, default=2e-4, help="learning rate (default 2e-4)")
     parser.add_argument("--pre", action="store_true", help="load pretrained model  (default False)")
     args = parser.parse_args()
     device = args.d
@@ -305,7 +306,7 @@ if __name__ == "__main__":
 
     divcolor = DivColor(args.d)
 
-    divcolor.fit_vae(lab_dataset.train_loader, lab_dataset.val_loader, epochs=args.e, lr=args.lr)
+    divcolor.fit_vae(lab_dataset.train_loader, lab_dataset.val_loader, epochs=args.e, lr=args.lr_vae)
 
     divcolor.make_latent_space(lab_dataset.train_set, "train")
     divcolor.make_latent_space(lab_dataset.val_set, "val")
@@ -314,7 +315,7 @@ if __name__ == "__main__":
     grey_dataset.make_dataset()
     grey_dataset.make_dataloader(args.bs)
 
-    divcolor.fit_mdn(grey_dataset.train_loader, grey_dataset.val_loader, epochs=args.e, lr=args.lr)
+    divcolor.fit_mdn(grey_dataset.train_loader, grey_dataset.val_loader, epochs=args.e, lr=args.lr_mdn)
 
     # divcolor.colorize_one_image("C:/Users/mauricio/Pictures/IMG_20160710_212006.jpg", "C:/Users/mauricio/Pictures/grey.png")
     # divcolor.colorize_images(grey_dataset.train_grey.cpu().numpy())
