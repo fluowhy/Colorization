@@ -200,7 +200,7 @@ class MDNMod(nn.Module):
     x = self.mdn_bn3(x)
     x = self.relu(self.mdn_conv4(x))
     x = self.mdn_bn4(x)
-    x = selfself.relu(self.mdn_conv5(x))
+    x = self.relu(self.mdn_conv5(x))
     x = self.mdn_bn5(x)
     x = self.relu(self.mdn_conv6(x))
     x = self.mdn_bn6(x)
