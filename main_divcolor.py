@@ -43,7 +43,7 @@ class DivColor(object):
         l2_train_loss = 0
         w_l2_train_loss = 0
         kl_train_loss = 0
-        for idx, batch in enumerate(dataloader):
+        for idx, batch in tqdm(enumerate(dataloader)):
             img_lab, img_weights = batch
             img_l, img_ab = self.transform_lab(img_lab)
             img_weights = img_weights.to(self.device)
@@ -69,7 +69,7 @@ class DivColor(object):
         w_l2_eval_loss = 0
         kl_eval_loss = 0
         with torch.no_grad():
-            for idx, batch in enumerate(dataloader):
+            for idx, batch in tqdm(enumerate(dataloader)):
                 img_lab, img_weights = batch
                 img_l, img_ab = self.transform_lab(img_lab)
                 img_weights = img_weights.to(self.device)
@@ -89,7 +89,7 @@ class DivColor(object):
     def train_mdn(self, dataloader):
         self.mdn.train()
         train_loss = 0
-        for idx, batch in enumerate(dataloader):
+        for idx, batch in tqdm(enumerate(dataloader)):
             img_g, z, logvar = batch
             img_g = self.transform_mdn(img_g)
             z = z.to(self.device)
@@ -106,7 +106,7 @@ class DivColor(object):
         self.mdn.eval()
         eval_loss = 0
         with torch.no_grad():
-            for idx, batch in enumerate(dataloader):
+            for idx, batch in tqdm(enumerate(dataloader)):
                 img_g, z, logvar = batch
                 img_g = self.transform_mdn(img_g)
                 z = z.to(self.device)
@@ -158,7 +158,7 @@ class DivColor(object):
         self.optimizer_vae = torch.optim.Adam(self.vae.parameters(), lr=lr, weight_decay=wd)
         self.vae_train_loss = np.zeros((epochs, 4))
         self.vae_val_loss = np.zeros((epochs, 4))
-        for epoch in tqdm(range(epochs)):
+        for epoch in range(epochs):
             total_train_loss, l2_train_loss, w_l2_train_loss, kl_train_loss = self.train_vae(train_loader)
             total_val_loss, l2_val_loss, w_l2_val_loss, kl_val_loss = self.eval_vae(val_loader)
             if total_val_loss < self.best_loss_vae:
@@ -174,7 +174,7 @@ class DivColor(object):
         self.optimizer_mdn = torch.optim.Adam(self.mdn.parameters(), lr=lr, weight_decay=wd)
         self.mdn_train_loss = np.zeros(epochs)
         self.mdn_val_loss = np.zeros(epochs)
-        for epoch in tqdm(range(epochs)):
+        for epoch in range(epochs):
             train_loss = self.train_mdn(train_loader)
             val_loss = self.eval_mdn(val_loader)
             if val_loss < self.best_loss_mdn:
@@ -210,88 +210,90 @@ class DivColor(object):
 
 
 class LABDataset(object):
-	def __init__(self):
-		return
+    def __init__(self):
+        return
 
-	def load_data(self):
-		self.train_lab = torch.tensor(np.load("../datasets/stl10/train_lab_64.npy"), dtype=torch.int8, device="cpu")
-		# self.test_lab = torch.tensor(np.load("../datasets/stl10/test_lab_64.npy"), dtype=torch.int8, device="cpu")
-		self.val_lab = torch.tensor(np.load("../datasets/stl10/val_lab_64.npy"), dtype=torch.int8, device="cpu")
+    def load_data(self):
+        self.train_lab = torch.tensor(np.load("../datasets/stl10/train_lab_64.npy"), dtype=torch.int8, device="cpu")
+        # self.test_lab = torch.tensor(np.load("../datasets/stl10/test_lab_64.npy"), dtype=torch.int8, device="cpu")
+        self.val_lab = torch.tensor(np.load("../datasets/stl10/val_lab_64.npy"), dtype=torch.int8, device="cpu")
 
-		self.train_hist = torch.tensor(np.load("../datasets/stl10/train_hist_values_64.npy"), dtype=torch.float, device="cpu")
-		# self.test_hist = torch.tensor(np.load("../datasets/stl10/test_hist_values_64.npy"), dtype=torch.float, device="cpu")
-		self.val_hist = torch.tensor(np.load("../datasets/stl10/val_hist_values_64.npy"), dtype=torch.float, device="cpu")
+        self.train_hist = torch.tensor(np.load("../datasets/stl10/train_hist_values_64.npy"), dtype=torch.float, device="cpu")
+        # self.test_hist = torch.tensor(np.load("../datasets/stl10/test_hist_values_64.npy"), dtype=torch.float, device="cpu")
+        self.val_hist = torch.tensor(np.load("../datasets/stl10/val_hist_values_64.npy"), dtype=torch.float, device="cpu")
 
-	def make_dataset(self):
-		self.train_set = torch.utils.data.TensorDataset(self.train_lab, self.train_hist)
-		# self.test_vae_set = torch.utils.data.TensorDataset(self.test_lab, self.test_hist)
-		self.val_set = torch.utils.data.TensorDataset(self.val_lab, self.val_hist)
-		return
+    def make_dataset(self):
+        self.train_set = torch.utils.data.TensorDataset(self.train_lab, self.train_hist)
+        # self.test_vae_set = torch.utils.data.TensorDataset(self.test_lab, self.test_hist)
+        self.val_set = torch.utils.data.TensorDataset(self.val_lab, self.val_hist)
+        return
 
-	def make_dataloader(self, bs):
-		self.train_loader = torch.utils.data.DataLoader(self.train_set, batch_size=bs, shuffle=True)
-		# self.test_loader = torch.utils.data.DataLoader(self.test_vae_set, batch_size=bs, shuffle=True)
-		self.val_loader = torch.utils.data.DataLoader(self.val_set, batch_size=bs, shuffle=True)
-		return
+    def make_dataloader(self, bs):
+        self.train_loader = torch.utils.data.DataLoader(self.train_set, batch_size=bs, shuffle=True)
+        # self.test_loader = torch.utils.data.DataLoader(self.test_vae_set, batch_size=bs, shuffle=True)
+        self.val_loader = torch.utils.data.DataLoader(self.val_set, batch_size=bs, shuffle=True)
+        return
 
 
 class GreyDataset(object):
-	def __init__(self):
-		return
+    def __init__(self):
+        return
 
-	def load_data(self):
-		self.train_grey = torch.tensor(np.load("../datasets/stl10/train_grey_64.npy"), dtype=torch.uint8, device="cpu")
-		self.val_grey = torch.tensor(np.load("../datasets/stl10/val_grey_64.npy"), dtype=torch.uint8, device="cpu")
+    def load_data(self):
+        self.train_grey = torch.tensor(np.load("../datasets/stl10/train_grey_64.npy"), dtype=torch.uint8, device="cpu")
+        self.val_grey = torch.tensor(np.load("../datasets/stl10/val_grey_64.npy"), dtype=torch.uint8, device="cpu")
 
-		self.train_mu = torch.tensor(np.load("../datasets/stl10/train_latent_mu.npy"), dtype=torch.float, device="cpu")
-		self.val_mu = torch.tensor(np.load("../datasets/stl10/val_latent_mu.npy"), dtype=torch.float, device="cpu")
+        self.train_mu = torch.tensor(np.load("../datasets/stl10/train_latent_mu.npy"), dtype=torch.float, device="cpu")
+        self.val_mu = torch.tensor(np.load("../datasets/stl10/val_latent_mu.npy"), dtype=torch.float, device="cpu")
 
-		self.train_logvar =  torch.tensor(np.load("../datasets/stl10/train_latent_logvar.npy"), dtype=torch.float, device="cpu")
-		self.val_logvar = torch.tensor(np.load("../datasets/stl10/val_latent_logvar.npy"), dtype=torch.float, device="cpu")
-		return
+        self.train_logvar =  torch.tensor(np.load("../datasets/stl10/train_latent_logvar.npy"), dtype=torch.float, device="cpu")
+        self.val_logvar = torch.tensor(np.load("../datasets/stl10/val_latent_logvar.npy"), dtype=torch.float, device="cpu")
+        return
 
-	def make_dataset(self):
-		self.train_set = torch.utils.data.TensorDataset(self.train_grey, self.train_mu, self.train_logvar)
-		self.val_set = torch.utils.data.TensorDataset(self.val_grey, self.val_mu, self.val_logvar)
-		return
+    def make_dataset(self):
+        self.train_set = torch.utils.data.TensorDataset(self.train_grey, self.train_mu, self.train_logvar)
+        self.val_set = torch.utils.data.TensorDataset(self.val_grey, self.val_mu, self.val_logvar)
+        return
 
-	def make_dataloader(self, bs):
-		self.train_loader = torch.utils.data.DataLoader(self.train_set, batch_size=bs, shuffle=True)
-		self.val_loader = torch.utils.data.DataLoader(self.val_set, batch_size=bs, shuffle=True)
-		return
+    def make_dataloader(self, bs):
+        self.train_loader = torch.utils.data.DataLoader(self.train_set, batch_size=bs, shuffle=True)
+        self.val_loader = torch.utils.data.DataLoader(self.val_set, batch_size=bs, shuffle=True)
+        return
 
 
-seed_everything()
+if __name__ == "__main__":
 
-parser = argparse.ArgumentParser(description="colorization")
-parser.add_argument("--d", type=str, default="cpu", help="select device (default cpu)")
-parser.add_argument("--e", type=int, default=2, help="epochs (default 2)")
-parser.add_argument("--bs", type=int, default=100, help="batch size (default 20)")
-parser.add_argument("--lr", type=float, default=2e-4, help="learning rate (default 2e-4)")
-parser.add_argument("--pre", action="store_true", help="load pretrained model  (default False)")
-args = parser.parse_args()
-device = args.d
-print(args)
-print(device)
+    seed_everything()
 
-lab_dataset = LABDataset()
-lab_dataset.load_data()
-lab_dataset.make_dataset()
-lab_dataset.make_dataloader(args.bs)
+    parser = argparse.ArgumentParser(description="colorization")
+    parser.add_argument("--d", type=str, default="cpu", help="select device (default cpu)")
+    parser.add_argument("--e", type=int, default=2, help="epochs (default 2)")
+    parser.add_argument("--bs", type=int, default=100, help="batch size (default 20)")
+    parser.add_argument("--lr", type=float, default=2e-4, help="learning rate (default 2e-4)")
+    parser.add_argument("--pre", action="store_true", help="load pretrained model  (default False)")
+    args = parser.parse_args()
+    device = args.d
+    print(args)
+    print(device)
 
-grey_dataset = GreyDataset()
+    lab_dataset = LABDataset()
+    lab_dataset.load_data()
+    lab_dataset.make_dataset()
+    lab_dataset.make_dataloader(args.bs)
 
-mse = torch.nn.MSELoss(reduction="none").to(device)
+    grey_dataset = GreyDataset()
 
-divcolor = DivColor(args.d)
+    mse = torch.nn.MSELoss(reduction="none").to(device)
 
-divcolor.fit_vae(lab_dataset.train_loader, lab_dataset.val_loader, epochs=args.e, lr=args.lr)
+    divcolor = DivColor(args.d)
 
-divcolor.make_latent_space(lab_dataset.train_set, "train")
-divcolor.make_latent_space(lab_dataset.val_set, "val")
+    divcolor.fit_vae(lab_dataset.train_loader, lab_dataset.val_loader, epochs=args.e, lr=args.lr)
 
-grey_dataset.load_data()
-grey_dataset.make_dataset()
-grey_dataset.make_dataloader(args.bs)
+    divcolor.make_latent_space(lab_dataset.train_set, "train")
+    divcolor.make_latent_space(lab_dataset.val_set, "val")
 
-divcolor.fit_mdn(grey_dataset.train_loader, grey_dataset.val_loader, epochs=args.e, lr=args.lr)
+    grey_dataset.load_data()
+    grey_dataset.make_dataset()
+    grey_dataset.make_dataloader(args.bs)
+
+    divcolor.fit_mdn(grey_dataset.train_loader, grey_dataset.val_loader, epochs=args.e, lr=args.lr)
