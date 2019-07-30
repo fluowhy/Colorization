@@ -2,7 +2,18 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-def plot_loss(path, savename):
+class PlotLoss(object):
+    def __init__(self, readname, savename, limits=None):
+        self.readname = readname
+        self.savename = savename
+        self.limits = limits
+
+    def plot(self):
+        plot_loss(self.readname, self.savename, self.limits)
+        return
+
+
+def plot_loss(path, savename, limits):
     dpi = 500
     loss = np.load(path)
     plt.clf()
@@ -12,15 +23,21 @@ def plot_loss(path, savename):
     plt.legend()
     plt.xlabel("epoch")
     plt.ylabel("loss")
-    # plt.ylim([0, 100])
+    if limits != None:
+        plt.ylim(limits)
     plt.savefig("figures/train_curve_{}".format(savename), dpi=dpi)
     return
 
 
 if __name__ == "__main__":    
     dpi = 500
-    plot_loss("files/losses.npy", "vae")
-    plot_loss("files/losses_vae_lab.npy", "vaegen")
-    plot_loss("files/losses_dec.npy", "dec")
-    plot_loss("files/losses_mdn_divcolor.npy", "mdn_divcolor")
-    plot_loss("files/losses_vae_divcolor.npy", "vae_divcolor")
+    losses = PlotLoss("files/losses.npy", "vae", [0, 10])
+    losses_vae_lab = PlotLoss("files/losses_vae_lab.npy", "vaegen", [0, 10])
+    losses_dec = PlotLoss("files/losses_dec.npy", "dec", [150, 175])
+    losses_mdn_divcolor = PlotLoss("files/losses_mdn_divcolor.npy", "mdn_divcolor", [0, 0.002])
+    losses_vae_divcolor = PlotLoss("files/losses_vae_divcolor.npy", "vae_divcolor", [0, 0.01])
+    losses.plot()
+    losses_vae_lab.plot()
+    losses_dec.plot()
+    losses_mdn_divcolor.plot()
+    losses_vae_divcolor.plot()

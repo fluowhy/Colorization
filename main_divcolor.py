@@ -132,20 +132,23 @@ class DivColor(object):
         self.mdn.eval()
         self.vae.eval()
         h, w = 64, 64
-        img = skimage.io.imread(path_in, as_gray=True)  # h, w
+        img = cv2.imread(path_in, 0)
+        # resize image
         h_org, w_org = img.shape
-        img = skimage.transform.resize(img, (h, w))
+        img = cv2.resize(img, (w, h), interpolation=cv2.INTER_AREA)
+        img = img.astype(np.float) / 255
         img = torch.tensor(img, dtype=torch.float, device=self.device).unsqueeze(0).unsqueeze(0)  # 1, 1, h, w
         with torch.no_grad():
             z = self.mdn(img)
             sc_feat32, sc_feat16, sc_feat8, sc_feat4 = self.vae.cond_encoder(img)
             ab_out = self.vae.decoder(z, sc_feat32, sc_feat16, sc_feat8, sc_feat4)
-        ab_out = torch.cat((img, ab_out), dim=1)
-        ab_out = self.unnormalize(ab_out).squeeze().cpu().numpy()
-        ab_out = np.transpose(ab_out, (1, 2, 0)).astype(np.int8)
-        color_out = skimage.color.lab2rgb(ab_out)
+        lab_out = torch.cat((img, ab_out), dim=1)
+        lab_out = self.unnormalize(lab_out).squeeze().cpu().numpy()
+        lab_out = np.transpose(lab_out, (1, 2, 0)).astype(np.int8)
+        color_out = skimage.color.lab2rgb(lab_out)
         color_out = skimage.transform.resize(color_out, (h_org, w_org, 3))
         color_out = (color_out * 255).astype(np.uint8)
+        skimage.io.imsave(path_out, color_out)
         cv2.imwrite(path_out, cv2.cvtColor(color_out, cv2.COLOR_RGB2BGR))
         return
 
@@ -313,7 +316,7 @@ if __name__ == "__main__":
 
     divcolor = DivColor(args.d, args.pre)
 
-    # divcolor.fit_vae(lab_dataset.train_loader, lab_dataset.val_loader, epochs=args.e, lr=args.lr_vae)
+    divcolor.fit_vae(lab_dataset.train_loader, lab_dataset.val_loader, epochs=args.e, lr=args.lr_vae)
 
     divcolor.make_latent_space(lab_dataset.train_set, "train")
     divcolor.make_latent_space(lab_dataset.val_set, "val")
@@ -324,5 +327,5 @@ if __name__ == "__main__":
 
     divcolor.fit_mdn(grey_dataset.train_loader, grey_dataset.val_loader, epochs=args.e, lr=args.lr_mdn)
 
-    # divcolor.colorize_one_image("C:/Users/mauricio/Pictures/IMG_20160710_212006.jpg", "C:/Users/mauricio/Pictures/grey.png")
+    # divcolor.colorize_one_image("/home/mauricio/Pictures/cat.jpeg", "/home/mauricio/Pictures/cat_grey.png")
     # divcolor.colorize_images(grey_dataset.train_grey.cpu().numpy())
