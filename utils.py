@@ -3,7 +3,7 @@ import torchvision
 import random
 import os
 import skimage
-from sklearn.metrics import confusion_matrix
+import cv2
 import pandas as pd
 
 from im import *
@@ -396,14 +396,11 @@ class Normalize(object):
 
 
 class UnNormalize(object):
-	def __init__(self):
-		self.l = [0., 100.]
-		self.ab = [- 128., 127.]
+	def __init__(self, device):
+		self.cte = torch.tensor([100, 128, 128], dtype=torch.float, device=device).unsqueeze(0).unsqueeze(-1).unsqueeze(-1)
 
-	def __call__(self, img):
-		img[:, 0] = unnormalize(img[:, 0], self.l)
-		img[:, 1:] = unnormalize(img[:, 1:], self.ab)
-		return img
+	def __call__(self, x):
+		return x * self.cte
 
 
 class ToType(object):
