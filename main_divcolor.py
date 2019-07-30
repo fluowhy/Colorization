@@ -184,6 +184,7 @@ class DivColor(object):
         for epoch in range(epochs):
             total_train_loss, l2_train_loss, w_l2_train_loss, kl_train_loss = self.train_vae(train_loader)
             total_val_loss, l2_val_loss, w_l2_val_loss, kl_val_loss = self.eval_vae(val_loader)
+            print("Epoch {} train loss {:.4f} val loss {:.4f}".format(epoch, total_train_loss, total_val_loss))
             if total_val_loss < self.best_loss_vae:
                 torch.save(self.vae.state_dict(), "models/divcolor_vae.pth")
                 self.best_loss_vae = total_val_loss
@@ -192,7 +193,7 @@ class DivColor(object):
             self.vae_val_loss[epoch] = [total_val_loss, l2_val_loss, w_l2_val_loss, kl_val_loss]
             np.save("files/divcolor_vae_train_loss", self.vae_train_loss)
             np.save("files/divcolor_vae_val_loss", self.vae_val_loss)
-            print("Epoch {} train loss {:.4f} val loss {:.4f}".format(epoch, total_train_loss, total_val_loss))
+
         return
 
     def fit_mdn(self, train_loader, val_loader, epochs=2, lr=2e-4, wd=0.):
@@ -202,6 +203,7 @@ class DivColor(object):
         for epoch in range(epochs):
             train_loss = self.train_mdn(train_loader)
             val_loss = self.eval_mdn(val_loader)
+            print("Epoch {} train loss {:.4f} val loss {:.4f}".format(epoch, train_loss, val_loss))
             if val_loss < self.best_loss_mdn:
                 torch.save(self.mdn.state_dict(), "models/divcolor_mdn.pth")
                 self.best_loss_mdn = val_loss
@@ -210,7 +212,6 @@ class DivColor(object):
             self.mdn_val_loss[epoch] = val_loss
             np.save("files/divcolor_mdn_train_loss", self.mdn_train_loss)
             np.save("files/divcolor_mdn_val_loss", self.mdn_val_loss)
-            print("Epoch {} train loss {:.4f} val loss {:.4f}".format(epoch, train_loss, val_loss))
         return
 
     def make_latent_space(self, image_set, split):
