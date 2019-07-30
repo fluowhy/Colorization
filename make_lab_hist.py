@@ -35,8 +35,7 @@ if __name__ == "__main__":
     hist, edges = np.histogramdd(np.hstack((l, a, b)),
                                  bins=(np.arange(102) - 0.5, np.arange(256) - 0.5, np.arange(256) - 0.5))
 
-    hist += 1e-5
-    hist /= hist.max()
+    hist += 1
 
     train_hist_values = make_lab_hist_image_set(hist, train_lab)
     val_hist_values = make_lab_hist_image_set(hist, val_lab)
