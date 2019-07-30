@@ -12,9 +12,9 @@ def resize_all_images(path, savepath):
     img_org = np.load(path)
     img_org = np.transpose(img_org, (0, 2, 3, 1))
     n = len(img_org)
-    img_resize = np.zeros((n, 64, 64, 3), dtype=np.int8)
+    img_resize = np.zeros((n, 64, 64, 3), dtype=np.uint8)
     for i in tqdm(range(n)):
-        img_resize[i] = resize_image(img_org[i])
+        img_resize[i] = resize_image(img_org[i]) * 255
     img_resize = np.transpose(img_resize, (0, 3, 1, 2))
     np.save(savepath, img_resize)
     return
