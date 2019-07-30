@@ -144,12 +144,10 @@ class DivColor(object):
             ab_out = self.vae.decoder(z, sc_feat32, sc_feat16, sc_feat8, sc_feat4)
         lab_out = torch.cat((img, ab_out), dim=1)
         lab_out = self.unnormalize(lab_out).squeeze().cpu().numpy()
-        lab_out = np.transpose(lab_out, (1, 2, 0)).astype(np.int8)
-        color_out = skimage.color.lab2rgb(lab_out)
-        color_out = skimage.transform.resize(color_out, (h_org, w_org, 3))
-        color_out = (color_out * 255).astype(np.uint8)
-        skimage.io.imsave(path_out, color_out)
-        cv2.imwrite(path_out, cv2.cvtColor(color_out, cv2.COLOR_RGB2BGR))
+        lab_out = np.transpose(lab_out, (1, 2, 0)).astype(np.uint8)
+        color_out = cv2.cvtColor(lab_out, cv2.COLOR_LAB2BGR)
+        color_out = cv2.resize(color_out, (w_org, h_org), interpolation=cv2.INTER_AREA)
+        cv2.imwrite(path_out, color_out)
         return
 
     def colorize_images(self, img):
@@ -169,14 +167,13 @@ class DivColor(object):
             z = self.mdn(img)
             sc_feat32, sc_feat16, sc_feat8, sc_feat4 = self.vae.cond_encoder(img)
             ab_out = self.vae.decoder(z, sc_feat32, sc_feat16, sc_feat8, sc_feat4)
-        ab_out = torch.cat((img, ab_out), dim=1)
-        ab_out = self.unnormalize(ab_out).cpu().numpy()
-        ab_out = np.transpose(ab_out, (0, 2, 3, 1)).astype(np.int8)
+        lab_out = torch.cat((img, ab_out), dim=1)
+        lab_out = self.unnormalize(lab_out).cpu().numpy()
+        lab_out = np.transpose(lab_out, (0, 2, 3, 1)).astype(np.uint8)
         for i in range(n):
-            color_out = skimage.color.lab2rgb(ab_out[i])
-            color_out = skimage.transform.resize(color_out, (96, 96, 3))
-            color_out = (color_out * 255).astype(np.uint8)
-            cv2.imwrite("../datasets/stl10/divcolor/{}.png".format(str(i)), cv2.cvtColor(color_out, cv2.COLOR_RGB2BGR))
+            color_out = cv2.cvtColor(lab_out[i], cv2.COLOR_LAB2BGR)
+            color_out = cv2.resize(color_out, (96, 96), interpolation=cv2.INTER_AREA)
+            cv2.imwrite("../datasets/stl10/divcolor/{}.png".format(str(i)), color_out)
         return
 
     def fit_vae(self, train_loader, val_loader, epochs=2, lr=2e-4, wd=0.):
@@ -316,7 +313,7 @@ if __name__ == "__main__":
 
     divcolor = DivColor(args.d, args.pre)
 
-    divcolor.fit_vae(lab_dataset.train_loader, lab_dataset.val_loader, epochs=args.e, lr=args.lr_vae)
+    # divcolor.fit_vae(lab_dataset.train_loader, lab_dataset.val_loader, epochs=args.e, lr=args.lr_vae)
 
     divcolor.make_latent_space(lab_dataset.train_set, "train")
     divcolor.make_latent_space(lab_dataset.val_set, "val")
@@ -326,6 +323,3 @@ if __name__ == "__main__":
     grey_dataset.make_dataloader(args.bs)
 
     divcolor.fit_mdn(grey_dataset.train_loader, grey_dataset.val_loader, epochs=args.e, lr=args.lr_mdn)
-
-    # divcolor.colorize_one_image("/home/mauricio/Pictures/cat.jpeg", "/home/mauricio/Pictures/cat_grey.png")
-    # divcolor.colorize_images(grey_dataset.train_grey.cpu().numpy())
