@@ -54,7 +54,8 @@ class DivColor(object):
             img_weights = img_weights.to(self.device)
             mu, logvar, pred = self.vae(img_ab, img_l)
             l2_loss, w_l2_loss, kl_loss = vae_loss(mu, logvar, pred, img_ab, img_weights)
-            loss = (l2_loss + w_l2_loss) * self.reg2 + kl_loss * self.reg1
+            # loss = (l2_loss + w_l2_loss) * self.reg2 + kl_loss * self.reg1
+            loss = w_l2_loss + kl_loss * self.reg1
             loss.backward()
             self.optimizer_vae.step()
             total_train_loss += loss.item()
@@ -80,7 +81,8 @@ class DivColor(object):
                 img_weights = img_weights.to(self.device)
                 mu, logvar, pred = self.vae(img_ab, img_l)
                 l2_loss, w_l2_loss, kl_loss = vae_loss(mu, logvar, pred, img_ab, img_weights)
-                loss = (l2_loss + w_l2_loss) * self.reg2 + kl_loss * self.reg1
+                # loss = (l2_loss + w_l2_loss) * self.reg2 + kl_loss * self.reg1
+                loss = w_l2_loss + kl_loss * self.reg1
                 total_eval_loss += loss.item()
                 l2_eval_loss += l2_loss.item()
                 w_l2_eval_loss += w_l2_loss.item()
@@ -156,7 +158,6 @@ class DivColor(object):
         :param x: uint8 numpy array (n, h, w)
         :return:
         """
-        # TODO: write this function
         self.load_model()
         self.mdn.eval()
         self.vae.eval()
@@ -219,7 +220,7 @@ class DivColor(object):
         n, _, _= image_set.tensors[1].shape
         latent_mu = np.empty((0, 64), dtype=np.float)
         latent_logvar = np.empty((0, 64), dtype=np.float)
-        # normalize and transform, etc
+        print("generating latent space")
         with torch.no_grad():
             for idx, batch in tqdm(enumerate(data_loader)):
                 img_lab, _ = batch
@@ -313,7 +314,7 @@ if __name__ == "__main__":
 
     divcolor = DivColor(args.d, args.pre)
 
-    # divcolor.fit_vae(lab_dataset.train_loader, lab_dataset.val_loader, epochs=args.e, lr=args.lr_vae)
+    divcolor.fit_vae(lab_dataset.train_loader, lab_dataset.val_loader, epochs=args.e, lr=args.lr_vae, , wd=1e-6)
 
     divcolor.make_latent_space(lab_dataset.train_set, "train")
     divcolor.make_latent_space(lab_dataset.val_set, "val")
@@ -322,4 +323,4 @@ if __name__ == "__main__":
     grey_dataset.make_dataset()
     grey_dataset.make_dataloader(args.bs)
 
-    divcolor.fit_mdn(grey_dataset.train_loader, grey_dataset.val_loader, epochs=args.e, lr=args.lr_mdn)
+    divcolor.fit_mdn(grey_dataset.train_loader, grey_dataset.val_loader, epochs=args.e, lr=args.lr_mdn, wd=1e-6)
