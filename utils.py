@@ -3,7 +3,7 @@ import torchvision
 import random
 import os
 import skimage
-from sklearn.metrics import confusion_matrix
+import cv2
 import pandas as pd
 
 from im import *
@@ -40,61 +40,6 @@ def rgb2bgr(x):
     xbgr[:, :, 1] = xg
     xbgr[:, :, 2] = xr
     return xbgr
-
-
-def plot_confusion_matrix(y_true, y_pred, labels, normalize=False, title=None, cmap=plt.cm.Blues, dpi=500):
-	"""
-	This function prints and plots the confusion matrix.
-	Normalization can be applied by setting `normalize=True`.
-	Modified by M. Romero.
-	Original: https://scikit-learn.org/stable/auto_examples/model_selection/plot_confusion_matrix.html#sphx-glr-auto-examples-model-selection-plot-confusion-matrix-py
-	"""
-	if not title:
-		if normalize:
-			title = 'Normalized confusion matrix'
-		else:
-			title = 'Confusion matrix, without normalization'
-
-	# Compute confusion matrix
-	cm = confusion_matrix(y_true, y_pred)
-	# Only use the labels that appear in the data
-	# classes = classes[unique_labels(y_true, y_pred)]
-	if normalize:
-		cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
-		print("Normalized confusion matrix")
-	else:
-		print('Confusion matrix, without normalization')
-
-	fig, ax = plt.subplots(figsize=(10, 10))
-	im = ax.imshow(cm, interpolation='nearest', cmap=cmap)
-	ax.figure.colorbar(im, ax=ax)
-	# We want to show all ticks...
-	ax.set(xticks=np.arange(cm.shape[1]),
-		   yticks=np.arange(cm.shape[0]),
-		   xticklabels=labels,
-		   yticklabels=labels,
-		   title=title,
-		   ylabel='True label',
-		   xlabel='Predicted label'
-		   )
-	# Rotate the tick labels and set their alignment.
-	plt.setp(ax.get_xticklabels(),
-			 rotation=45,
-			 ha="right",
-			 rotation_mode="anchor"
-			 )
-
-	# Loop over data dimensions and create text annotations.
-	fmt = '.2f' if normalize else 'd'
-	thresh = cm.max() / 2.
-	for i in range(cm.shape[0]):
-		for j in range(cm.shape[1]):
-			ax.text(j, i, format(cm[i, j], fmt),
-					ha="center", va="center",
-					color="white" if cm[i, j] > thresh else "black")
-	fig.tight_layout()
-	plt.savefig("figures/cm_{}".format(title), dpi=dpi)
-	return ax
 
 
 def rgb2lab(x):
@@ -274,81 +219,6 @@ def plot_images(model, test_data, n, title="test"):
 	return
 
 
-class GMMLoss(torch.nn.Module):
-	def __init__(self, ld):
-		super(GMMLoss, self).__init__()
-		self.cte = np.sqrt(2 * np.pi)**ld
-
-	def forward(self, mu, log_s2, w, z):
-		r = (- 0.5 * ((z.unsqueeze(-1) - mu).pow(2) / log_s2.exp()).sum(dim=1)).exp()
-		det = log_s2.exp().prod(dim=1).sqrt() * self.cte
-		pr = (r / det * w).sum(dim=1)
-		return (- torch.log(pr)).mean()
-
-
-def train_gmm(model, optimizer, dataloader, loss_function):
-	"""
-
-	Parameters
-	----------
-	model : torch.nn.module
-	optimizer : torch.optim
-	dataloader : DataLoader
-
-	Returns
-	-------
-	loss : float
-		One epoch train loss.
-	"""
-	model.train()
-	train_loss = 0
-	for idx, batch in enumerate(dataloader):
-		x, z = batch
-		optimizer.zero_grad()
-		mu, log_s2, w = model(x)
-		loss = loss_function(mu, log_s2, w, z)
-		loss.backward()
-		optimizer.step()
-		train_loss += loss.item()
-	train_loss /= (idx + 1)
-	return train_loss
-
-
-def eval_gmm(model, dataloader, loss_function):
-	"""
-
-	Parameters
-	----------
-	# TODO: add loss function to docstring
-	loss_fuobject : object
-	model : CONVAE
-		Model to be evaluated.
-	dataloader : DataLoader
-		Dataloader to be used.
-	Returns
-	-------
-	eval_loss : float
-		Evaluation loss.
-	"""
-	model.eval()
-	eval_loss = 0
-	with torch.no_grad():
-		for idx, batch in enumerate(dataloader):
-			x, z = batch
-			mu, log_s2, w = model(x)
-			loss = loss_function(mu, log_s2, w, z)
-			eval_loss += loss.item()
-		eval_loss /= (idx + 1)
-	return eval_loss
-
-
-def gmmloss(mu, log_s2, w, z):
-	r = (- 0.5 * ((z.unsqueeze(-1) - mu).pow(2) / log_s2.exp()).sum(dim=1)).exp()
-	det = log_s2.exp().prod(dim=1).sqrt()
-	pr = (r / det * w).sum(dim=1)
-	return (- torch.log(pr)).mean()
-
-
 def load_dataset(debug, N=10, device="cpu", name="cifar10"):
 	"""
 	load data from Cifar10.
@@ -517,63 +387,55 @@ def getweights(img, binedges, lossweights):
 
 
 class Normalize(object):
-    """Crop randomly the image in a sample.
+	def __init__(self, device):
+		self.cte = torch.tensor([100, 128, 128], dtype=torch.float, device=device).unsqueeze(0).unsqueeze(-1).unsqueeze(-1)
 
-    Args:
-        output_size (tuple or int): Desired output size. If int, square crop
-            is made.
-    """
-
-    def __init__(self):
-        self.l = [0., 100.]
-        self.ab = [- 128., 127.]
-
-    def __call__(self, img):
-        return normalize(img[:, 0], self.l).unsqueeze(1), normalize(img[:, 1:], self.ab)
+	def __call__(self, x):
+		x = x / self.cte
+		return x[:, 0].unsqueeze(1), x[:, 1:]
 
 
 class UnNormalize(object):
-    """Crop randomly the image in a sample.
+	def __init__(self, device):
+		self.cte = torch.tensor([100, 128, 128], dtype=torch.float, device=device).unsqueeze(0).unsqueeze(-1).unsqueeze(-1)
 
-    Args:
-        output_size (tuple or int): Desired output size. If int, square crop
-            is made.
-    """
-
-    def __init__(self):
-        self.l = [0., 100.]
-        self.ab = [- 128., 127.]
-
-    def __call__(self, img):
-        img[:, 0] = unnormalize(img[:, 0], self.l)
-        img[:, 1:] = unnormalize(img[:, 1:], self.ab)
-        return img
+	def __call__(self, x):
+		return x * self.cte
 
 
 class ToType(object):
-    def __init__(self, dtype, device):
-        self.dtype = dtype
-        self.device = device
+	def __init__(self, dtype, device):
+		self.dtype = dtype
+		self.device = device
 
-    def __call__(self, img):
-        return img.type(dtype=self.dtype).to(self.device)
+	def __call__(self, img):
+		return img.type(dtype=self.dtype).to(self.device)
+
+
+class GreyTransform(object):
+	def __init__(self, dtype, device):
+		self.dtype = dtype
+		self.device = device
+
+	def __call__(self, x):
+		return (x.type(dtype=self.dtype).to(self.device) / 255).unsqueeze(1)
 
 
 class ToLAB(object):
-    def __init__(self, device):
-        self.device = device
+	def __init__(self, device):
+		self.device = device
 
-    def __call__(self, img):
-        img_lab = np.transpose(skimage.color.rgb2lab(np.transpose(img.cpu().numpy(), (0, 2, 3, 1))), (0, 3, 1, 2))
-        return torch.tensor(img_lab, device=self.device, dtype=torch.float)
+	def __call__(self, img):
+		img_lab = np.transpose(skimage.color.rgb2lab(np.transpose(img.cpu().numpy(), (0, 2, 3, 1))), (0, 3, 1, 2))
+		return torch.tensor(img_lab, device=self.device, dtype=torch.float)
 
 
 class ToRGB(object):
-    def __init__(self):
-        self.f = 1
+	def __init__(self):
+		self.f = 1
 
-    def __call__(self, img):
-        img = np.transpose(img.cpu().numpy(), (0, 2, 3, 1))
-        for i in range(img.shape[0]):
-            img[i] = skimage.color.lab2rgb(img[i]) * 255
-        return np.transpose(img.astype(np.uint8), (0, 3, 1, 2))
+	def __call__(self, img):
+		img = np.transpose(img.cpu().numpy(), (0, 2, 3, 1))
+		for i in range(img.shape[0]):
+			img[i] = skimage.color.lab2rgb(img[i]) * 255
+		return np.transpose(img.astype(np.uint8), (0, 3, 1, 2))
