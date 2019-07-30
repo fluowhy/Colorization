@@ -28,6 +28,7 @@ class DivColor(object):
         self.best_loss_mdn = np.inf
         self.transform_lab = torchvision.transforms.Compose([ToType(torch.float, device), Normalize(device)])
         self.transform_mdn = GreyTransform(torch.float, device)
+        self.unnormalize = UnNormalize(device)
         self.device = device
         print(count_parameters(self.vae))
         print(count_parameters(self.mdn))
@@ -117,7 +118,7 @@ class DivColor(object):
         eval_loss /= (idx + 1)
         return eval_loss
 
-    def predict_one_image(self, path_in, path_out=None):
+    def colorize_one_image(self, path_in, path_out):
         """
         Colorize one image.
         :param path: str, image path
@@ -126,32 +127,49 @@ class DivColor(object):
         self.load_model()
         self.mdn.eval()
         self.vae.eval()
-        dpi = 400
         h, w = 64, 64
         img = skimage.io.imread(path_in, as_gray=True)  # h, w
-        # normalize?
         h_org, w_org = img.shape
         img = skimage.transform.resize(img, (h, w))
-        img = torch.tensor(img, dtype=torch.float, device=self.device).unsqueeze(-1).unsqueeze(-1)  # 1, 1, h, w
+        img = torch.tensor(img, dtype=torch.float, device=self.device).unsqueeze(0).unsqueeze(0)  # 1, 1, h, w
         with torch.no_grad():
             z = self.mdn(img)
             sc_feat32, sc_feat16, sc_feat8, sc_feat4 = self.vae.cond_encoder(img)
-        color_out = self.vae.decoder(z, sc_feat32, sc_feat16, sc_feat8, sc_feat4).squeeze()
-        color_out = color_out.cpu().numpy()
-        color_out = np.transpose(color_out, (1, 2, 0))
-        # un normalize
+            ab_out = self.vae.decoder(z, sc_feat32, sc_feat16, sc_feat8, sc_feat4)
+        ab_out = torch.cat((img, ab_out), dim=1)
+        ab_out = self.unnormalize(ab_out).squeeze().cpu().numpy()
+        ab_out = np.transpose(ab_out, (1, 2, 0)).astype(np.int8)
+        color_out = skimage.color.lab2rgb(ab_out)
         color_out = skimage.transform.resize(color_out, (h_org, w_org, 3))
-        fig = plt.figure(frameon=False)
-        fig.set_size_inches(w, h)
-        ax = plt.Axes(fig, [0., 0., 1., 1.])
-        ax.set_axis_off()
-        fig.add_axes(ax)
-        ax.imshow(color_out, aspect='normal')
-        fig.savefig(path_out, dpi)
+        color_out = (color_out * 255).astype(np.uint8)
+        cv2.imwrite(path_out, cv2.cvtColor(color_out, cv2.COLOR_RGB2BGR))
         return
 
-    def predict_images(self, x):
+    def colorize_images(self, img):
+        """
+        Colorize a numpy array of images.
+        :param x: uint8 numpy array (n, h, w)
+        :return:
+        """
         # TODO: write this function
+        self.load_model()
+        self.mdn.eval()
+        self.vae.eval()
+        n, _, _ = img.shape
+        img = img.astype(np.float32) / 255
+        img = torch.tensor(img, dtype=torch.float, device=self.device).unsqueeze(1)
+        with torch.no_grad():
+            z = self.mdn(img)
+            sc_feat32, sc_feat16, sc_feat8, sc_feat4 = self.vae.cond_encoder(img)
+            ab_out = self.vae.decoder(z, sc_feat32, sc_feat16, sc_feat8, sc_feat4)
+        ab_out = torch.cat((img, ab_out), dim=1)
+        ab_out = self.unnormalize(ab_out).cpu().numpy()
+        ab_out = np.transpose(ab_out, (0, 2, 3, 1)).astype(np.int8)
+        for i in range(n):
+            color_out = skimage.color.lab2rgb(ab_out[i])
+            color_out = skimage.transform.resize(color_out, (96, 96, 3))
+            color_out = (color_out * 255).astype(np.uint8)
+            cv2.imwrite("../datasets/stl10/divcolor/{}.png".format(str(i)), cv2.cvtColor(color_out, cv2.COLOR_RGB2BGR))
         return
 
     def fit_vae(self, train_loader, val_loader, epochs=2, lr=2e-4, wd=0.):
@@ -187,7 +205,6 @@ class DivColor(object):
         return
 
     def make_latent_space(self, image_set, split):
-        # TODO: refactor
         self.vae.load_state_dict(torch.load("models/divcolor_vae.pth", map_location=self.device))
         self.vae.eval()
         data_loader = torch.utils.data.DataLoader(image_set, batch_size=100, shuffle=False)
@@ -287,13 +304,16 @@ if __name__ == "__main__":
 
     divcolor = DivColor(args.d)
 
-    divcolor.fit_vae(lab_dataset.train_loader, lab_dataset.val_loader, epochs=args.e, lr=args.lr)
-
-    divcolor.make_latent_space(lab_dataset.train_set, "train")
-    divcolor.make_latent_space(lab_dataset.val_set, "val")
-
+    # divcolor.fit_vae(lab_dataset.train_loader, lab_dataset.val_loader, epochs=args.e, lr=args.lr)
+    #
+    # divcolor.make_latent_space(lab_dataset.train_set, "train")
+    # divcolor.make_latent_space(lab_dataset.val_set, "val")
+    #
     grey_dataset.load_data()
     grey_dataset.make_dataset()
     grey_dataset.make_dataloader(args.bs)
+    #
+    # divcolor.fit_mdn(grey_dataset.train_loader, grey_dataset.val_loader, epochs=args.e, lr=args.lr)
 
-    divcolor.fit_mdn(grey_dataset.train_loader, grey_dataset.val_loader, epochs=args.e, lr=args.lr)
+    divcolor.colorize_one_image("C:/Users/mauricio/Pictures/IMG_20160710_212006.jpg", "C:/Users/mauricio/Pictures/grey.png")
+    divcolor.colorize_images(grey_dataset.train_grey.cpu().numpy())
