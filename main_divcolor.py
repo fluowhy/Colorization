@@ -19,9 +19,11 @@ def mdn_loss(mu, z, logvar):
 
 
 class DivColor(object):
-    def __init__(self, device):
+    def __init__(self, device, pre=False):
         self.vae = VAEMod()
         self.mdn = MDNMod()
+        self.vae.load_state_dict(torch.load("models/divcolor_vae.pth", map_location=device)) if pre else 0
+        self.vae.load_state_dict(torch.load("models/divcolor_mdn.pth", map_location=device)) if pre else 0
         self.vae.to(device)
         self.mdn.to(device)
         self.best_loss_vae = np.inf
@@ -304,7 +306,7 @@ if __name__ == "__main__":
 
     mse = torch.nn.MSELoss(reduction="none").to(device)
 
-    divcolor = DivColor(args.d)
+    divcolor = DivColor(args.d, args.pre)
 
     divcolor.fit_vae(lab_dataset.train_loader, lab_dataset.val_loader, epochs=args.e, lr=args.lr_vae)
 
