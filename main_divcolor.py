@@ -32,7 +32,8 @@ class DivColor(object):
         self.transform_mdn = GreyTransform(torch.float, device)
         self.unnormalize = UnNormalize(device)
         self.device = device
-        self.l1 = 1e-2
+        self.reg1 = 1e-2
+        self.reg2 = 0.5
         print(count_parameters(self.vae))
         print(count_parameters(self.mdn))
 
@@ -53,7 +54,7 @@ class DivColor(object):
             img_weights = img_weights.to(self.device)
             mu, logvar, pred = self.vae(img_ab, img_l)
             l2_loss, w_l2_loss, kl_loss = vae_loss(mu, logvar, pred, img_ab, img_weights)
-            loss = l2_loss + w_l2_loss + kl_loss * self.l1
+            loss = (l2_loss + w_l2_loss) * self.reg2 + kl_loss * self.reg1
             loss.backward()
             self.optimizer_vae.step()
             total_train_loss += loss.item()
@@ -79,7 +80,7 @@ class DivColor(object):
                 img_weights = img_weights.to(self.device)
                 mu, logvar, pred = self.vae(img_ab, img_l)
                 l2_loss, w_l2_loss, kl_loss = vae_loss(mu, logvar, pred, img_ab, img_weights)
-                loss = l2_loss + w_l2_loss + kl_loss * self.l1
+                loss = (l2_loss + w_l2_loss) * self.reg2 + kl_loss * self.reg1
                 total_eval_loss += loss.item()
                 l2_eval_loss += l2_loss.item()
                 w_l2_eval_loss += w_l2_loss.item()
@@ -190,6 +191,7 @@ class DivColor(object):
             self.vae_val_loss[epoch] = [total_val_loss, l2_val_loss, w_l2_val_loss, kl_val_loss]
             np.save("files/divcolor_vae_train_loss", self.vae_train_loss)
             np.save("files/divcolor_vae_val_loss", self.vae_val_loss)
+            print("Epoch {} train loss {:.4f} val loss {:.4f}".format(epoch, total_train_loss, total_val_loss))
         return
 
     def fit_mdn(self, train_loader, val_loader, epochs=2, lr=2e-4, wd=0.):
@@ -207,6 +209,7 @@ class DivColor(object):
             self.mdn_val_loss[epoch] = val_loss
             np.save("files/divcolor_mdn_train_loss", self.mdn_train_loss)
             np.save("files/divcolor_mdn_val_loss", self.mdn_val_loss)
+            print("Epoch {} train loss {:.4f} val loss {:.4f}".format(epoch, train_loss, val_loss))
         return
 
     def make_latent_space(self, image_set, split):
