@@ -272,7 +272,7 @@ class VAEMod(nn.Module):
     x = self.enc_fc1(x)
     mu = x[..., :self.hidden_size]
     logvar = x[..., self.hidden_size:]
-    return mu, logvar
+    return mu, self.tanh(logvar)
 
   def cond_encoder(self, x):
     x = self.relu(self.cond_enc_conv1(x))
