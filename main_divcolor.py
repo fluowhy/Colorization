@@ -314,8 +314,9 @@ if __name__ == "__main__":
     mse = torch.nn.MSELoss(reduction="none").to(device)
 
     divcolor = DivColor(args.d, args.pre)
+    torch.save(divcolor.vae.state_dict(), "models/divcolor_vae.pth")
 
-    divcolor.fit_vae(lab_dataset.train_loader, lab_dataset.val_loader, epochs=args.e, lr=args.lr_vae, wd=1e-6)
+    # divcolor.fit_vae(lab_dataset.train_loader, lab_dataset.val_loader, epochs=args.e, lr=args.lr_vae, wd=1e-6)
 
     divcolor.make_latent_space(lab_dataset.train_set, "train")
     divcolor.make_latent_space(lab_dataset.val_set, "val")
