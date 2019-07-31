@@ -33,7 +33,8 @@ if __name__ == "__main__":
     b = concat[:, 2].reshape(-1, 1)
 
     hist, edges = np.histogramdd(np.hstack((l, a, b)),
-                                 bins=(np.arange(102) - 0.5, np.arange(256) - 0.5, np.arange(256) - 0.5))
+                                 bins=(np.arange(102) - 0.5, np.arange(256) - 0.5, np.arange(256) - 0.5),
+                                 density=True)
 
     hist += 1
 
