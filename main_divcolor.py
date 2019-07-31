@@ -314,9 +314,8 @@ if __name__ == "__main__":
     mse = torch.nn.MSELoss(reduction="none").to(device)
 
     divcolor = DivColor(args.d, args.pre)
-    torch.save(divcolor.vae.state_dict(), "models/divcolor_vae.pth")
 
-    # divcolor.fit_vae(lab_dataset.train_loader, lab_dataset.val_loader, epochs=args.e, lr=args.lr_vae, wd=1e-6)
+    divcolor.fit_vae(lab_dataset.train_loader, lab_dataset.val_loader, epochs=args.e, lr=args.lr_vae, wd=0.)
 
     divcolor.make_latent_space(lab_dataset.train_set, "train")
     divcolor.make_latent_space(lab_dataset.val_set, "val")
@@ -325,4 +324,4 @@ if __name__ == "__main__":
     grey_dataset.make_dataset()
     grey_dataset.make_dataloader(args.bs)
 
-    divcolor.fit_mdn(grey_dataset.train_loader, grey_dataset.val_loader, epochs=args.e, lr=args.lr_mdn, wd=1e-6)
+    divcolor.fit_mdn(grey_dataset.train_loader, grey_dataset.val_loader, epochs=args.e, lr=args.lr_mdn, wd=0.)
