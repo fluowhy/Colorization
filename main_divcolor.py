@@ -179,8 +179,8 @@ class DivColor(object):
 
     def fit_vae(self, train_loader, val_loader, epochs=2, lr=2e-4, wd=0.):
         self.optimizer_vae = torch.optim.Adam(self.vae.parameters(), lr=lr, weight_decay=wd)
-        self.vae_train_loss = np.zeros((epochs, 4))
-        self.vae_val_loss = np.zeros((epochs, 4))
+        self.vae_train_loss = []
+        self.vae_val_loss = []
         for epoch in range(epochs):
             total_train_loss, l2_train_loss, w_l2_train_loss, kl_train_loss = self.train_vae(train_loader)
             total_val_loss, l2_val_loss, w_l2_val_loss, kl_val_loss = self.eval_vae(val_loader)
@@ -189,8 +189,8 @@ class DivColor(object):
                 torch.save(self.vae.state_dict(), "models/divcolor_vae.pth")
                 self.best_loss_vae = total_val_loss
                 print("Saving vae")
-            self.vae_train_loss[epoch] = [total_train_loss, l2_train_loss, w_l2_train_loss, kl_train_loss]
-            self.vae_val_loss[epoch] = [total_val_loss, l2_val_loss, w_l2_val_loss, kl_val_loss]
+            self.vae_train_loss.append([total_train_loss, l2_train_loss, w_l2_train_loss, kl_train_loss])
+            self.vae_val_loss.append([total_val_loss, l2_val_loss, w_l2_val_loss, kl_val_loss])
             np.save("files/divcolor_vae_train_loss", self.vae_train_loss)
             np.save("files/divcolor_vae_val_loss", self.vae_val_loss)
 
@@ -198,8 +198,8 @@ class DivColor(object):
 
     def fit_mdn(self, train_loader, val_loader, epochs=2, lr=2e-4, wd=0.):
         self.optimizer_mdn = torch.optim.Adam(self.mdn.parameters(), lr=lr, weight_decay=wd)
-        self.mdn_train_loss = np.zeros(epochs)
-        self.mdn_val_loss = np.zeros(epochs)
+        self.mdn_train_loss = []
+        self.mdn_val_loss = []
         for epoch in range(epochs):
             train_loss = self.train_mdn(train_loader)
             val_loss = self.eval_mdn(val_loader)
@@ -208,8 +208,8 @@ class DivColor(object):
                 torch.save(self.mdn.state_dict(), "models/divcolor_mdn.pth")
                 self.best_loss_mdn = val_loss
                 print("Saving mdn")
-            self.mdn_train_loss[epoch] = train_loss
-            self.mdn_val_loss[epoch] = val_loss
+            self.mdn_train_loss.append(train_loss)
+            self.mdn_val_loss.append(val_loss)
             np.save("files/divcolor_mdn_train_loss", self.mdn_train_loss)
             np.save("files/divcolor_mdn_val_loss", self.mdn_val_loss)
         return
