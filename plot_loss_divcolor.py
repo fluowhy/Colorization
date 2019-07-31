@@ -48,6 +48,7 @@ def plot_loss_mdn(train_loss, val_loss, dpi=400):
     plt.legend()
     plt.xlabel("epoch")
     plt.ylabel("mean loss value")
+    plt.ylim([0, 1e4])
     plt.savefig("figures/train_curve_divcolor_mdn", dpi=dpi)
     return
 

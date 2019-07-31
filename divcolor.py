@@ -229,7 +229,8 @@ class VAEMod(nn.Module):
     self.enc_bn3 = nn.BatchNorm2d(512)
     self.enc_conv4 = nn.Conv2d(512, 1024, 3, stride=2, padding=1)
     self.enc_bn4 = nn.BatchNorm2d(1024)
-    self.enc_fc1 = nn.Linear(4 * 4 * 1024, self.hidden_size * 2)
+    self.enc_fc_mu = nn.Linear(4 * 4 * 1024, self.hidden_size)
+    self.enc_fc_logvar = nn.Linear(4 * 4 * 1024, self.hidden_size)
     self.enc_dropout1 = nn.Dropout(p=.7)
 
     # Cond encoder layers
@@ -269,10 +270,9 @@ class VAEMod(nn.Module):
     x = self.enc_bn4(x)
     x = x.view(-1, 4 * 4 * 1024)
     x = self.enc_dropout1(x)
-    x = self.enc_fc1(x)
-    mu = x[..., :self.hidden_size]
-    logvar = x[..., self.hidden_size:]
-    return mu, self.tanh(logvar)
+    mu = self.enc_fc_mu(x)
+    logvar =  self.tanh(self.enc_fc_logvar(x))
+    return mu, logvar
 
   def cond_encoder(self, x):
     x = self.relu(self.cond_enc_conv1(x))

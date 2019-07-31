@@ -6,8 +6,8 @@ from utils import *
 
 
 def vae_loss(mu, logvar, pred, gt, weights):
-    kl_loss = - 0.5*(1 + logvar - mu.pow(2) - logvar.exp()).sum(dim=1).mean()
-    l2_loss = mse(pred, gt).sum(1).sum(-1).sum(-1).mean()
+    kl_loss = - 0.5 * (1 + logvar - mu.pow(2) - logvar.exp()).sum(-1).mean()
+    l2_loss = mse(pred, gt).sum(1) # .sum(-1).sum(-1).mean()
     w_l2_loss = (l2_loss / weights).sum(-1).sum(-1).mean()
     l2_loss = l2_loss.sum(-1).sum(-1).mean()
     return l2_loss, w_l2_loss, kl_loss
