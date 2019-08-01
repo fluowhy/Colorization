@@ -20,18 +20,17 @@ def mdn_loss(mu, z, logvar):
 
 class DivColor(object):
     def __init__(self, device, pre=False):
+        self.device = device
         self.vae = VAEMod()
         self.mdn = MDNMod()
-        self.vae.load_state_dict(torch.load("models/divcolor_vae.pth", map_location=device)) if pre else 0
-        self.vae.load_state_dict(torch.load("models/divcolor_mdn.pth", map_location=device)) if pre else 0
         self.vae.to(device)
         self.mdn.to(device)
+        self.load_model() if pre else 0
         self.best_loss_vae = np.inf
         self.best_loss_mdn = np.inf
         self.transform_lab = torchvision.transforms.Compose([ToType(torch.float, device), Normalize(device)])
         self.transform_mdn = GreyTransform(torch.float, device)
         self.unnormalize = UnNormalize(device)
-        self.device = device
         self.reg1 = 1e-2
         self.reg2 = 0.5
         print(count_parameters(self.vae))
