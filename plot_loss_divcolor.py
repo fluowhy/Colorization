@@ -14,7 +14,7 @@ def plot_loss_vae(train_loss, val_loss, dpi=400):
     plt.legend()
     plt.xlabel("epoch")
     plt.ylabel("mean loss value")
-    plt.xlim([0, 30])
+    plt.ylim([0, 2000])
 
     plt.subplot(1, 3, 2)
     plt.plot(train_loss[:, 2], color="navy", label="w_l2 train", linestyle="--")
@@ -23,7 +23,7 @@ def plot_loss_vae(train_loss, val_loss, dpi=400):
     plt.legend()
     plt.xlabel("epoch")
     plt.ylabel("mean loss value")
-    plt.xlim([0, 30])
+    plt.ylim([0, 2000])
 
     plt.subplot(1, 3, 3)
     plt.plot(train_loss[:, 3], color="navy", label="kl train", linestyle=":")
@@ -32,7 +32,6 @@ def plot_loss_vae(train_loss, val_loss, dpi=400):
     plt.legend()
     plt.xlabel("epoch")
     plt.ylabel("mean loss value")
-    plt.xlim([0, 30])
     plt.savefig("figures/train_curve_divcolor_vae", dpi=dpi)
 
     return
