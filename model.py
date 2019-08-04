@@ -15,224 +15,134 @@ class UnFlatten(torch.nn.Module):
         return input.reshape(input.shape[0], self.ch, self.s, self.s)
 
 
-class CONVAE(torch.nn.Module):
-    def __init__(self, inch, nch, ks, ld):
-        super(CONVAE, self).__init__()
+class VAE(torch.nn.Module):
 
-        self.encoder = torch.nn.Sequential(
-            torch.nn.Conv2d(inch, nch, ks, stride=2, padding=int(ks/2)),
-            torch.nn.BatchNorm2d(nch),
-            torch.nn.ReLU(),
-            torch.nn.Conv2d(nch, int(nch * 2), ks, stride=2, padding=int(ks/2)),
-            torch.nn.BatchNorm2d(int(nch * 2)),
-            torch.nn.ReLU(),
-            torch.nn.Conv2d(int(nch * 2), int(nch * 4), ks, stride=2, padding=int(ks/2)),
-            torch.nn.BatchNorm2d(int(nch * 4)),
-            torch.nn.ReLU(),
-            torch.nn.Conv2d(int(nch * 4), int(nch * 8), ks, stride=2, padding=int(ks/2)),
-            torch.nn.BatchNorm2d(int(nch * 8)),
-            torch.nn.ReLU(),
-            torch.nn.Conv2d(int(nch * 8), ld, ks, stride=2, padding=int(ks / 2)),
-            Flatten(),
-            torch.nn.Linear(int(nch * 8) * 2 * int(32 / (2**4)), ld)
-            )
+  # define layers
+  def __init__(self):
+    super(VAE, self).__init__()
+    self.hidden_size = 64
+    self.tanh = torch.nn.Tanh()
+    self.relu = torch.nn.ReLU()
 
-        self.decoder = torch.nn.Sequential(
-            torch.nn.ConvTranspose2d(ld, int(nch * 8), kernel_size=2, stride=2),
-            torch.nn.BatchNorm2d(int(nch * 8)),
-            torch.nn.ReLU(),
-            torch.nn.ConvTranspose2d(int(nch * 8), int(nch * 4), kernel_size=2, stride=2),
-            torch.nn.BatchNorm2d(int(nch * 4)),
-            torch.nn.ReLU(),
-            torch.nn.ConvTranspose2d(int(nch * 4), int(nch * 2), kernel_size=2, stride=2),
-            torch.nn.BatchNorm2d(int(nch * 2)),
-            torch.nn.ReLU(),
-            torch.nn.ConvTranspose2d(int(nch * 2), nch, kernel_size=2, stride=2),
-            torch.nn.BatchNorm2d(nch),
-            torch.nn.ReLU(),
-            torch.nn.ConvTranspose2d(nch, inch, kernel_size=2, stride=2),
-            torch.nn.BatchNorm2d(inch),
-            torch.nn.Sigmoid()
-        )
-        """
-        self.decoder = torch.nn.Sequential(
-            torch.nn.Upsample(scale_factor=2.0, mode="bilinear"),
-            torch.nn.Conv2d(ld, int(nch * 8), kernel_size=ks, padding=int(ks/2)),
-            torch.nn.BatchNorm2d(int(nch * 8)),
-            torch.nn.ReLU(),
-            torch.nn.Upsample(scale_factor=2.0, mode="bilinear"),
-            torch.nn.Conv2d(int(nch * 8), int(nch * 4), kernel_size=ks, padding=int(ks/2)),
-            torch.nn.BatchNorm2d(int(nch * 4)),
-            torch.nn.ReLU(),
-            torch.nn.Upsample(scale_factor=2.0, mode="bilinear"),
-            torch.nn.Conv2d(int(nch * 4), int(nch * 2), kernel_size=ks, padding=int(ks/2)),
-            torch.nn.BatchNorm2d(int(nch * 2)),
-            torch.nn.ReLU(),
-            torch.nn.Upsample(scale_factor=2.0, mode="bilinear"),
-            torch.nn.Conv2d(int(nch * 2), inch, kernel_size=ks, padding=int(ks/2)),
-            torch.nn.BatchNorm2d(inch),
-            torch.nn.ReLU(),
-            torch.nn.Upsample(scale_factor=2.0, mode="bilinear"),
-            torch.nn.Sigmoid()
-        )
-        """
+    # Encoder layers
+    self.enc_conv1 = torch.nn.Conv2d(2, 128, 5, stride=2, padding=2)
+    self.enc_bn1 = torch.nn.BatchNorm2d(128)
+    self.enc_conv2 = torch.nn.Conv2d(128, 256, 5, stride=2, padding=2)
+    self.enc_bn2 = torch.nn.BatchNorm2d(256)
+    self.enc_conv3 = torch.nn.Conv2d(256, 512, 5, stride=2, padding=2)
+    self.enc_bn3 = torch.nn.BatchNorm2d(512)
+    self.enc_conv4 = torch.nn.Conv2d(512, 1024, 3, stride=2, padding=1)
+    self.enc_bn4 = torch.nn.BatchNorm2d(1024)
+    self.enc_fc_mu = torch.nn.Linear(4 * 4 * 1024, self.hidden_size)
+    self.enc_fc_logvar = torch.nn.Linear(4 * 4 * 1024, self.hidden_size)
+    self.enc_dropout1 = torch.nn.Dropout(p=.7)
 
+    # Decoder layers
+    self.dec_upsamp1 = nn.Upsample(scale_factor=4, mode='bilinear', align_corners=True)
+    self.dec_conv1 = nn.Conv2d(1024 + self.hidden_size, 512, 3, stride=1, padding=1)
+    self.dec_bn1 = nn.BatchNorm2d(512)
+    self.dec_upsamp2 = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
+    self.dec_conv2 = nn.Conv2d(512, 256, 5, stride=1, padding=2)
+    self.dec_bn2 = nn.BatchNorm2d(256)
+    self.dec_upsamp3 = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
+    self.dec_conv3 = nn.Conv2d(256, 128, 5, stride=1, padding=2)
+    self.dec_bn3 = nn.BatchNorm2d(128)
+    self.dec_upsamp4 = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
+    self.dec_conv4 = nn.Conv2d(128, 64, 5, stride=1, padding=2)
+    self.dec_bn4 = nn.BatchNorm2d(64)
+    self.dec_upsamp5 = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
+    self.dec_conv5 = nn.Conv2d(64, 2, 5, stride=1, padding=2)
 
-    def encode(self, x):
-        return self.encoder(x)
+  def encoder(self, x):
+    x = self.relu(self.enc_conv1(x))
+    x = self.enc_bn1(x)
+    x = self.relu(self.enc_conv2(x))
+    x = self.enc_bn2(x)
+    x = self.relu(self.enc_conv3(x))
+    x = self.enc_bn3(x)
+    x = self.relu(self.enc_conv4(x))
+    x = self.enc_bn4(x)
+    x = x.view(-1, 4 * 4 * 1024)
+    x = self.enc_dropout1(x)
+    mu = self.enc_fc_mu(x)
+    logvar =  self.tanh(self.enc_fc_logvar(x))
+    return mu, logvar
 
-    def decode(self, y):
-        return self.decoder(y)
+  def decoder(self, z):
+    x = z.view(-1, self.hidden_size, 1, 1)
+    x = self.dec_upsamp1(x)
+    x = torch.cat([x, sc_feat4], 1)
+    x = self.relu(self.dec_conv1(x))
+    x = self.dec_bn1(x)
+    x = self.dec_upsamp2(x)
+    x = torch.cat([x, sc_feat8], 1)
+    x = self.relu(self.dec_conv2(x))
+    x = self.dec_bn2(x)
+    x = self.dec_upsamp3(x)
+    x = torch.cat([x, sc_feat16], 1)
+    x = self.relu(self.dec_conv3(x))
+    x = self.dec_bn3(x)
+    x = self.dec_upsamp4(x)
+    x = torch.cat([x, sc_feat32], 1)
+    x = self.relu(self.dec_conv4(x))
+    x = self.dec_bn4(x)
+    x = self.dec_upsamp5(x)
+    x = self.tanh(self.dec_conv5(x))
+    return x
 
-    def forward(self, x):
-        h = self.encode(x).squeeze()
-        ab = self.decode(h.reshape(h.shape[0], h.shape[1], 1, 1))
-        return ab, h
-
-
-class GMM(torch.nn.Module):
-    def __init__(self, nin, nh, k, ld):
-        """
-
-        Parameters
-        ----------
-        nin : int
-            Input dimensions.
-        nh : int
-            Hidden units.
-        k : int
-            Number of GMM components.
-        ld : int
-            Latent dimensions.
-        """
-        super(GMM, self).__init__()
-        self.fc1 = torch.nn.Linear(nin, nh)
-        self.fcu = torch.nn.Linear(nh, int(ld*k))
-        self.fcs = torch.nn.Linear(nh, int(ld*k))
-        self.fcw = torch.nn.Linear(nh, k)
-        self.relu = torch.nn.ReLU()
-        self.tanh = torch.nn.Tanh()
-        self.softmax = torch.nn.Softmax(dim=1)
-        self.ld = ld
-        self.k = k
-
-    def forward(self, x):
-        bs = x.shape[0]
-        h1 = self.tanh(self.fc1(x))
-        mu = self.fcu(h1)
-        log_s = self.fcs(h1)
-        w = self.softmax(self.fcw(h1))
-        return mu.reshape((bs, self.ld, self.k)), log_s.reshape((bs, self.ld, self.k)), w
+  # define forward pass
+  def forward(self, color):
+    mu, logvar = self.encoder(color)
+    stddev = torch.sqrt(torch.exp(logvar))
+    sample = torch.randn(stddev.shape, device=stddev.device)
+    z = torch.add(mu, torch.mul(sample, stddev))
+    color_out = self.decoder(z)
+    return mu, logvar, color_out
 
 
-class CONVGMM(torch.nn.Module):
-    def __init__(self, inch, nch, ks, nh, k, ld, ims=32):
-        """
+class MDN(nn.Module):
 
-        Parameters
-        ----------
-        nin : int
-            Input dimensions.
-        nh : int
-            Hidden units.
-        k : int
-            Number of GMM components.
-        ld : int
-            Latent dimensions.
-        """
-        # TODO: conv gmm
-        super(CONVGMM, self).__init__()
-        self.conv = torch.nn.Sequential(
-            torch.nn.Conv2d(inch, nch, ks, stride=2, padding=int(ks / 2)),
-            torch.nn.BatchNorm2d(nch),
-            torch.nn.ReLU(),
-            torch.nn.Conv2d(nch, int(nch * 2), ks, stride=2, padding=int(ks / 2)),
-            torch.nn.BatchNorm2d(int(nch * 2)),
-            torch.nn.ReLU(),
-            torch.nn.Conv2d(int(nch * 2), int(nch * 4), ks, stride=2, padding=int(ks / 2)),
-            torch.nn.BatchNorm2d(int(nch * 4)),
-            torch.nn.ReLU(),
-            torch.nn.Conv2d(int(nch * 4), int(nch * 8), ks, stride=2, padding=int(ks / 2)),
-            torch.nn.BatchNorm2d(int(nch * 8)),
-            torch.nn.ReLU(),
-            Flatten(),
-            torch.nn.Linear(int(nch * 8) * 2 * int(ims / (2**4)), nh)
-        )
+  # define layers
+  def __init__(self):
+    super(MDN, self).__init__()
+    self.hidden_size = 64
+    self.relu = torch.nn.ReLU()
 
-        self.fcu = torch.nn.Linear(nh, int(ld * k))
-        self.fcs = torch.nn.Linear(nh, int(ld * k))
-        self.fcw = torch.nn.Linear(nh, k)
-        self.relu = torch.nn.ReLU()
-        self.tanh = torch.nn.Tanh()
-        self.softmax = torch.nn.Softmax(dim=1)
-        self.ld = ld
-        self.k = k
+    # MDN Layers
+    self.mdn_conv1 = nn.Conv2d(1, 512, 5, stride=2, padding=int(5 / 2))
+    self.mdn_bn1 = nn.BatchNorm2d(512)
+    self.mdn_conv2 = nn.Conv2d(512, 512, 5, stride=2, padding=int(5 / 2))
+    self.mdn_bn2 = nn.BatchNorm2d(512)
+    self.mdn_conv3 = nn.Conv2d(512, 288, 5, padding=int(5 / 2))
+    self.mdn_bn3 = nn.BatchNorm2d(288)
+    self.mdn_conv4 = nn.Conv2d(288, 256, 5, stride=2, padding=int(5 / 2))
+    self.mdn_bn4 = nn.BatchNorm2d(256)
+    self.mdn_conv5 = nn.Conv2d(256, 128, 5, padding=int(5 / 2))
+    self.mdn_bn5 = nn.BatchNorm2d(128)
+    self.mdn_conv6 = nn.Conv2d(128, 96, 5, stride=2, padding=int(5 / 2))
+    self.mdn_bn6 = nn.BatchNorm2d(96)
+    self.mdn_conv7 = nn.Conv2d(96, 64, 5, padding=int(5 / 2))
+    self.mdn_bn7 = nn.BatchNorm2d(64)
+    self.mdn_dropout1 = nn.Dropout(p=.7)
+    self.mdn_fc1 = nn.Linear(4 * 4 * 64, self.hidden_size)
 
-    def forward(self, x):
-        bs = x.shape[0]
-        h1 = self.conv(x)
-        mu = self.fcu(h1)
-        log_s = self.tanh(self.fcs(h1))
-        w = self.softmax(self.fcw(h1))
-        return mu.reshape((bs, self.ld, self.k)), log_s.reshape((bs, self.ld, self.k)), w
-
-
-class DIS(torch.nn.Module):
-    def __init__(self, inch, nch, nout, ks):
-        super(DIS, self).__init__()
-        self.dis = torch.nn.Sequential(
-            torch.nn.Conv2d(inch, nch, ks, stride=2, padding=int(ks / 2)),
-            torch.nn.BatchNorm2d(nch),
-            torch.nn.ReLU(),
-            torch.nn.Conv2d(nch, int(nch * 2), ks, stride=2, padding=int(ks / 2)),
-            torch.nn.BatchNorm2d(int(nch * 2)),
-            torch.nn.ReLU(),
-            torch.nn.Conv2d(int(nch * 2), int(nch * 4), ks, stride=2, padding=int(ks / 2)),
-            torch.nn.BatchNorm2d(int(nch * 4)),
-            torch.nn.ReLU(),
-            torch.nn.Conv2d(int(nch * 4), int(nch * 8), ks, stride=2, padding=int(ks / 2)),
-            torch.nn.BatchNorm2d(int(nch * 8)),
-            torch.nn.ReLU(),
-            Flatten(),
-            torch.nn.Linear(int(nch * 8) * 2 * int(32 / (2 ** 4)), nout),
-            torch.nn.Sigmoid()
-        )
-
-    def forward(self, x):
-        return self.dis(x)
-
-
-class CONVCLF(torch.nn.Module):
-    def __init__(self, inch, nch, nh, nout, ks=3):
-        super(CONVCLF, self).__init__()
-        self.clf = torch.nn.Sequential(
-            torch.nn.Conv2d(inch, nch, ks, stride=2, padding=int(ks / 2)),
-            torch.nn.BatchNorm2d(nch),
-            torch.nn.ReLU(),
-            torch.nn.Conv2d(nch, int(nch * 2), ks, stride=2, padding=int(ks / 2)),
-            torch.nn.BatchNorm2d(int(nch * 2)),
-            torch.nn.ReLU(),
-            torch.nn.Conv2d(int(nch * 2), int(nch * 4), ks, stride=2, padding=int(ks / 2)),
-            torch.nn.BatchNorm2d(int(nch * 4)),
-            torch.nn.ReLU(),
-            torch.nn.Conv2d(int(nch * 4), int(nch * 8), ks, stride=2, padding=int(ks / 2)),
-            torch.nn.BatchNorm2d(int(nch * 8)),
-            torch.nn.ReLU(),
-            torch.nn.Conv2d(int(nch * 8), int(nch * 16), ks, stride=2, padding=int(ks / 2)),
-            torch.nn.BatchNorm2d(int(nch * 16)),
-            torch.nn.ReLU(),
-            torch.nn.Conv2d(int(nch * 16), int(nch * 32), ks, stride=2, padding=int(ks / 2)),
-            torch.nn.BatchNorm2d(int(nch * 32)),
-            torch.nn.ReLU(),
-            torch.nn.Conv2d(int(nch * 32), int(nch * 64), ks, stride=2, padding=int(ks / 2)),
-            torch.nn.BatchNorm2d(int(nch * 64)),
-            torch.nn.ReLU(),
-            torch.nn.Conv2d(int(nch * 64), nh, ks, stride=2, padding=int(ks / 2)),
-            torch.nn.BatchNorm2d(nh),
-            torch.nn.ReLU(),
-            torch.nn.Conv2d(nh, nout, ks, stride=2, padding=int(ks / 2))
-        )
-
-    def forward(self, x):
-        h = self.clf(x)
-        return h.squeeze()
+  # define forward pass
+  def forward(self, x):
+    x = self.relu(self.mdn_conv1(x))
+    x = self.mdn_bn1(x)
+    x = self.relu(self.mdn_conv2(x))
+    x = self.mdn_bn2(x)
+    x = self.relu(self.mdn_conv3(x))
+    x = self.mdn_bn3(x)
+    x = self.relu(self.mdn_conv4(x))
+    x = self.mdn_bn4(x)
+    x = self.relu(self.mdn_conv5(x))
+    x = self.mdn_bn5(x)
+    x = self.relu(self.mdn_conv6(x))
+    x = self.mdn_bn6(x)
+    x = self.relu(self.mdn_conv7(x))
+    x = self.mdn_bn7(x)
+    x = x.view(-1, 4 * 4 * 64)
+    x = self.mdn_dropout1(x)
+    x = self.mdn_fc1(x)
+    return x
