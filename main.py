@@ -49,9 +49,9 @@ class AutoEncoder(object):
         kl_train_loss = 0
         for idx, batch in tqdm(enumerate(dataloader)):
             img_lab, img_weights = batch
-            img_l, img_ab = self.transform_lab(img_lab)
+            _, img_ab = self.transform_lab(img_lab)
             img_weights = img_weights.to(self.device)
-            mu, logvar, pred = self.vae(img_ab, img_l)
+            mu, logvar, pred = self.vae(img_ab)
             l2_loss, w_l2_loss, kl_loss = vae_loss(mu, logvar, pred, img_ab, img_weights)
             # loss = (l2_loss + w_l2_loss) * self.reg2 + kl_loss * self.reg1
             loss = w_l2_loss + kl_loss * self.reg1
@@ -76,9 +76,9 @@ class AutoEncoder(object):
         with torch.no_grad():
             for idx, batch in tqdm(enumerate(dataloader)):
                 img_lab, img_weights = batch
-                img_l, img_ab = self.transform_lab(img_lab)
+                _, img_ab = self.transform_lab(img_lab)
                 img_weights = img_weights.to(self.device)
-                mu, logvar, pred = self.vae(img_ab, img_l)
+                mu, logvar, pred = self.vae(img_ab)
                 l2_loss, w_l2_loss, kl_loss = vae_loss(mu, logvar, pred, img_ab, img_weights)
                 # loss = (l2_loss + w_l2_loss) * self.reg2 + kl_loss * self.reg1
                 loss = w_l2_loss + kl_loss * self.reg1
@@ -141,8 +141,7 @@ class AutoEncoder(object):
         img = torch.tensor(img, dtype=torch.float, device=self.device).unsqueeze(0).unsqueeze(0)  # 1, 1, h, w
         with torch.no_grad():
             z = self.mdn(img)
-            sc_feat32, sc_feat16, sc_feat8, sc_feat4 = self.vae.cond_encoder(img)
-            ab_out = self.vae.decoder(z, sc_feat32, sc_feat16, sc_feat8, sc_feat4)
+            ab_out = self.vae.decoder(z)
         lab_out = torch.cat((img, ab_out), dim=1)
         lab_out = self.unnormalize(lab_out).squeeze().cpu().numpy()
         lab_out = np.transpose(lab_out, (1, 2, 0)).astype(np.uint8)
@@ -165,8 +164,7 @@ class AutoEncoder(object):
         img = torch.tensor(img, dtype=torch.float, device=self.device).unsqueeze(1)
         with torch.no_grad():
             z = self.mdn(img)
-            sc_feat32, sc_feat16, sc_feat8, sc_feat4 = self.vae.cond_encoder(img)
-            ab_out = self.vae.decoder(z, sc_feat32, sc_feat16, sc_feat8, sc_feat4)
+            ab_out = self.vae.decoder(z)
         lab_out = torch.cat((img, ab_out), dim=1)
         lab_out = self.unnormalize(lab_out).cpu().numpy()
         lab_out = np.transpose(lab_out, (0, 2, 3, 1)).astype(np.uint8)
