@@ -37,8 +37,8 @@ class AutoEncoder(object):
         print(count_parameters(self.mdn))
 
     def load_model(self):
-        self.vae.load_state_dict(torch.load("models/divcolor_vae.pth", map_location=self.device))
-        self.mdn.load_state_dict(torch.load("models/divcolor_mdn.pth", map_location=self.device))
+        self.vae.load_state_dict(torch.load("models/divcolor_re_vae.pth", map_location=self.device))
+        self.mdn.load_state_dict(torch.load("models/divcolor_re_mdn.pth", map_location=self.device))
         return
 
     def train_vae(self, dataloader):
@@ -173,7 +173,7 @@ class AutoEncoder(object):
         for i in range(n):
             color_out = cv2.cvtColor(lab_out[i], cv2.COLOR_LAB2BGR)
             color_out = cv2.resize(color_out, (96, 96), interpolation=cv2.INTER_AREA)
-            cv2.imwrite("../datasets/stl10/divcolor/{}.png".format(str(i)), color_out)
+            cv2.imwrite("../datasets/stl10/divcolor/re_{}.png".format(str(i)), color_out)
         return
 
     def fit_vae(self, train_loader, val_loader, epochs=2, lr=2e-4, wd=0.):
@@ -185,13 +185,13 @@ class AutoEncoder(object):
             total_val_loss, l2_val_loss, w_l2_val_loss, kl_val_loss = self.eval_vae(val_loader)
             print("Epoch {} train loss {:.4f} val loss {:.4f}".format(epoch, total_train_loss, total_val_loss))
             if total_val_loss < self.best_loss_vae:
-                torch.save(self.vae.state_dict(), "models/divcolor_vae.pth")
+                torch.save(self.vae.state_dict(), "models/divcolor_re_vae.pth")
                 self.best_loss_vae = total_val_loss
                 print("Saving vae")
             self.vae_train_loss.append([total_train_loss, l2_train_loss, w_l2_train_loss, kl_train_loss])
             self.vae_val_loss.append([total_val_loss, l2_val_loss, w_l2_val_loss, kl_val_loss])
-            np.save("files/divcolor_vae_train_loss", self.vae_train_loss)
-            np.save("files/divcolor_vae_val_loss", self.vae_val_loss)
+            np.save("files/divcolor_re_vae_train_loss", self.vae_train_loss)
+            np.save("files/divcolor_re_vae_val_loss", self.vae_val_loss)
 
         return
 
@@ -204,17 +204,17 @@ class AutoEncoder(object):
             val_loss = self.eval_mdn(val_loader)
             print("Epoch {} train loss {:.4f} val loss {:.4f}".format(epoch, train_loss, val_loss))
             if val_loss < self.best_loss_mdn:
-                torch.save(self.mdn.state_dict(), "models/divcolor_mdn.pth")
+                torch.save(self.mdn.state_dict(), "models/divcolor_re_mdn.pth")
                 self.best_loss_mdn = val_loss
                 print("Saving mdn")
             self.mdn_train_loss.append(train_loss)
             self.mdn_val_loss.append(val_loss)
-            np.save("files/divcolor_mdn_train_loss", self.mdn_train_loss)
-            np.save("files/divcolor_mdn_val_loss", self.mdn_val_loss)
+            np.save("files/divcolor_re_mdn_train_loss", self.mdn_train_loss)
+            np.save("files/divcolor_re_mdn_val_loss", self.mdn_val_loss)
         return
 
     def make_latent_space(self, image_set, split):
-        self.vae.load_state_dict(torch.load("models/divcolor_vae.pth", map_location=self.device))
+        self.vae.load_state_dict(torch.load("models/divcolor_re_vae.pth", map_location=self.device))
         self.vae.eval()
         data_loader = torch.utils.data.DataLoader(image_set, batch_size=100, shuffle=False)
         n, _, _= image_set.tensors[1].shape
@@ -312,7 +312,7 @@ if __name__ == "__main__":
 
     mse = torch.nn.MSELoss(reduction="none").to(device)
 
-    divcolor = DivColor(args.d, args.pre)
+    divcolor = AutoEncoder(args.d, args.pre)
 
     divcolor.fit_vae(lab_dataset.train_loader, lab_dataset.val_loader, epochs=args.e, lr=args.lr_vae, wd=0.)
 
