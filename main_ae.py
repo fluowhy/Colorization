@@ -23,7 +23,7 @@ class AutoEncoder(object):
         self.unnormalize = UnNormalize(device)
         self.reg1 = 1e-2
         self.reg2 = 0.5
-        print(count_parameters(self.vae))
+        print(count_parameters(self.ae))
 
     def load_model(self):
         self.ae.load_state_dict(torch.load("models/divcolor_re_vae.pth", map_location=self.device))
