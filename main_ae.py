@@ -44,7 +44,7 @@ class AutoEncoder(object):
         train_loss /= (idx + 1)
         return train_loss
 
-    def eval_vae(self, dataloader):
+    def eval_ae(self, dataloader):
         self.ae.eval()
         eval_loss = 0
         with torch.no_grad():
@@ -110,8 +110,8 @@ class AutoEncoder(object):
         self.train_loss = []
         self.val_loss = []
         for epoch in range(epochs):
-            train_loss = self.train_vae(train_loader)
-            val_loss = self.eval_vae(val_loader)
+            train_loss = self.train_ae(train_loader)
+            val_loss = self.eval_ae(val_loader)
             print("Epoch {} train loss {:.4f} val loss {:.4f}".format(epoch, train_loss, val_loss))
             if val_loss < self.best_loss_vae:
                 print("Saving ae")
