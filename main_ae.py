@@ -26,7 +26,7 @@ class AutoEncoder(object):
         print(count_parameters(self.ae))
 
     def load_model(self):
-        self.ae.load_state_dict(torch.load("models/divcolor_re_vae.pth", map_location=self.device))
+        self.ae.load_state_dict(torch.load("models/ae.pth", map_location=self.device))
         return
 
     def train_ae(self, dataloader):
@@ -102,7 +102,7 @@ class AutoEncoder(object):
         for i in range(n):
             color_out = cv2.cvtColor(lab_out[i], cv2.COLOR_LAB2BGR)
             color_out = cv2.resize(color_out, (96, 96), interpolation=cv2.INTER_AREA)
-            cv2.imwrite("../datasets/stl10/divcolor/re_{}.png".format(str(i)), color_out)
+            cv2.imwrite("../datasets/stl10/divcolor/ae_{}.png".format(str(i)), color_out)
         return
 
     def fit_ae(self, train_loader, val_loader, epochs=2, lr=2e-4, wd=0.):
@@ -113,10 +113,10 @@ class AutoEncoder(object):
             train_loss = self.train_ae(train_loader)
             val_loss = self.eval_ae(val_loader)
             print("Epoch {} train loss {:.4f} val loss {:.4f}".format(epoch, train_loss, val_loss))
-            if val_loss < self.best_loss_vae:
+            if val_loss < self.best_loss_ae:
                 print("Saving ae")
                 torch.save(self.ae.state_dict(), "models/ae.pth")
-                self.best_loss_vae = val_loss
+                self.best_loss_ae = val_loss
             self.train_loss.append(train_loss)
             self.val_loss.append(val_loss)
             np.save("files/ae_train_loss", self.train_loss)
