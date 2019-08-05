@@ -140,7 +140,7 @@ class AutoEncoder(object):
         img = img.astype(np.float) / 255
         img = torch.tensor(img, dtype=torch.float, device=self.device).unsqueeze(0).unsqueeze(0)  # 1, 1, h, w
         with torch.no_grad():
-            z = self.mdn(img)
+            z = self.mdn(img).view(1, 64, 1, 1)
             ab_out = self.vae.decoder(z)
         lab_out = torch.cat((img, ab_out), dim=1)
         lab_out = self.unnormalize(lab_out).squeeze().cpu().numpy()
