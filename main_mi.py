@@ -1,199 +1,187 @@
-import torch
-import torchvision
-import matplotlib.pyplot as plt
 from tqdm import tqdm
 import argparse
 
-from im import *
 from model import *
 from utils import *
-from vae import *
-from mdn import *
 
 
-class Normalize(object):
-    """Crop randomly the image in a sample.
+def ae_loss(pred, gt):
+    l2_loss = mse(pred, gt).sum(-1).sum(-1).sum(-1).mean()
+    return l2_loss
 
-    Args:
-        output_size (tuple or int): Desired output size. If int, square crop
-            is made.
-    """
 
+def mi_loss(pred, z):
+    mi_a = mutual_information(pred[:, 0].view(-1, 64 * 64), z.view(-))
+    mi_b = mutual_information(pred[:, 0].view(-1, 64 * 64), z.view(-))
+    
+
+
+class AutoEncoder(object):
+    def __init__(self, device, pre=False):
+        self.device = device
+        self.ae = AE()
+        self.ae.to(device)
+        self.load_model() if pre else 0
+        self.best_loss_ae = np.inf
+        self.transform_lab = torchvision.transforms.Compose([ToType(torch.float, device), Normalize(device)])
+        self.transform_mdn = GreyTransform(torch.float, device)
+        self.unnormalize = UnNormalize(device)
+        self.reg1 = 1e-2
+        self.reg2 = 0.5
+        self.relu = torch.nn.ReLU()
+        print(count_parameters(self.ae))
+
+    def load_model(self):
+        self.ae.load_state_dict(torch.load("models/ae.pth", map_location=self.device))
+        return
+
+    def train_ae(self, dataloader):
+        self.ae.train()
+        train_loss = 0
+        for idx, batch in tqdm(enumerate(dataloader)):
+            img_lab, img_weights = batch
+            img_l, img_ab = self.transform_lab(img_lab)
+            img_weights = img_weights.to(self.device)
+            pred = self.ae(img_l)
+            loss = ae_loss(pred, img_ab, img_weights)
+            loss.backward()
+            self.optimizer_ae.step()
+            train_loss += loss.item()
+        train_loss /= (idx + 1)
+        return train_loss
+
+    def eval_ae(self, dataloader):
+        self.ae.eval()
+        eval_loss = 0
+        with torch.no_grad():
+            for idx, batch in tqdm(enumerate(dataloader)):
+                img_lab, img_weights = batch
+                img_l, img_ab = self.transform_lab(img_lab)
+                img_weights = img_weights.to(self.device)
+                pred = self.ae(img_l)
+                loss = ae_loss(pred, img_ab, img_weights)
+                eval_loss += loss.item()
+        eval_loss /= (idx + 1)
+        return eval_loss
+
+    def colorize_one_image(self, path_in, path_out):
+        """
+        Colorize one image.
+        :param path: str, image path
+        :return: none
+        """
+        self.load_model()
+        self.ae.eval()
+        h, w = 64, 64
+        img = cv2.imread(path_in, 0)
+        # resize image
+        h_org, w_org = img.shape
+        img = cv2.resize(img, (w, h), interpolation=cv2.INTER_AREA)
+        img = img.astype(np.float) / 255
+        img = torch.tensor(img, dtype=torch.float, device=self.device).unsqueeze(0).unsqueeze(0)  # 1, 1, h, w
+        with torch.no_grad():
+            ab_out = self.ae(img)
+            ab_out = torch.clamp(ab_out, - 1., 1.)
+        lab_out = torch.cat((img, ab_out), dim=1)
+        lab_out = self.unnormalize(lab_out).squeeze().cpu().numpy()
+        lab_out = np.transpose(lab_out, (1, 2, 0)).astype(np.uint8)
+        color_out = cv2.cvtColor(lab_out, cv2.COLOR_LAB2BGR)
+        color_out = cv2.resize(color_out, (w_org, h_org), interpolation=cv2.INTER_AREA)
+        cv2.imwrite(path_out, color_out)
+        return
+
+    def colorize_images(self, img):
+        """
+        Colorize a numpy array of images.
+        :param x: uint8 numpy array (n, h, w)
+        :return:
+        """
+        self.load_model()
+        self.ae.eval()
+        n, _, _ = img.shape
+        img = img.astype(np.float32) / 255
+        img = torch.tensor(img, dtype=torch.float, device=self.device).unsqueeze(1)
+        with torch.no_grad():
+            ab_out = self.ae(img)
+            ab_out = torch.clamp(ab_out, - 1., 1.)
+        lab_out = torch.cat((img, ab_out), dim=1)
+        lab_out = self.unnormalize(lab_out).cpu().numpy()
+        lab_out = np.transpose(lab_out, (0, 2, 3, 1)).astype(np.uint8)
+        for i in range(n):
+            color_out = cv2.cvtColor(lab_out[i], cv2.COLOR_LAB2BGR)
+            color_out = cv2.resize(color_out, (96, 96), interpolation=cv2.INTER_AREA)
+            cv2.imwrite("../datasets/stl10/divcolor/ae_{}.png".format(str(i)), color_out)
+        return
+
+    def fit_ae(self, train_loader, val_loader, epochs=2, lr=2e-4, wd=0.):
+        self.optimizer_ae = torch.optim.Adam(self.ae.parameters(), lr=lr, weight_decay=wd)
+        self.train_loss = []
+        self.val_loss = []
+        for epoch in range(epochs):
+            train_loss = self.train_ae(train_loader)
+            val_loss = self.eval_ae(val_loader)
+            print("Epoch {} train loss {:.4f} val loss {:.4f}".format(epoch, train_loss, val_loss))
+            if val_loss < self.best_loss_ae:
+                print("Saving ae")
+                torch.save(self.ae.state_dict(), "models/ae.pth")
+                self.best_loss_ae = val_loss
+            self.train_loss.append(train_loss)
+            self.val_loss.append(val_loss)
+            np.save("files/ae_train_loss", self.train_loss)
+            np.save("files/ae_val_loss", self.val_loss)
+        return
+
+
+class LABDataset(object):
     def __init__(self):
-        self.l = [0., 100.]
-        self.ab = [- 128., 127.]
+        return
 
-    def __call__(self, img):
-        return normalize(img[:, 0], self.l).unsqueeze(1), normalize(img[:, 1:], self.ab)
+    def load_data(self):
+        self.train_lab = torch.tensor(np.load("../datasets/stl10/train_lab_64.npy"), dtype=torch.int8, device="cpu")
+        # self.test_lab = torch.tensor(np.load("../datasets/stl10/test_lab_64.npy"), dtype=torch.int8, device="cpu")
+        self.val_lab = torch.tensor(np.load("../datasets/stl10/val_lab_64.npy"), dtype=torch.int8, device="cpu")
 
+        self.train_hist = torch.tensor(np.load("../datasets/stl10/train_hist_values_64.npy"), dtype=torch.float, device="cpu")
+        # self.test_hist = torch.tensor(np.load("../datasets/stl10/test_hist_values_64.npy"), dtype=torch.float, device="cpu")
+        self.val_hist = torch.tensor(np.load("../datasets/stl10/val_hist_values_64.npy"), dtype=torch.float, device="cpu")
 
-class UnNormalize(object):
-    """Crop randomly the image in a sample.
+    def make_dataset(self):
+        self.train_set = torch.utils.data.TensorDataset(self.train_lab, self.train_hist)
+        # self.test_vae_set = torch.utils.data.TensorDataset(self.test_lab, self.test_hist)
+        self.val_set = torch.utils.data.TensorDataset(self.val_lab, self.val_hist)
+        return
 
-    Args:
-        output_size (tuple or int): Desired output size. If int, square crop
-            is made.
-    """
-
-    def __init__(self):
-        self.l = [0., 100.]
-        self.ab = [- 128., 127.]
-
-    def __call__(self, img):
-        img[:, 0] = unnormalize(img[:, 0], self.l)
-        img[:, 1:] = unnormalize(img[:, 1:], self.ab)
-        return img
-
-
-class ToType(object):
-    def __init__(self, dtype):
-        self.dtype = dtype
-
-    def __call__(self, img):
-        return img.type(dtype=self.dtype)
+    def make_dataloader(self, bs):
+        self.train_loader = torch.utils.data.DataLoader(self.train_set, batch_size=bs, shuffle=True)
+        # self.test_loader = torch.utils.data.DataLoader(self.test_vae_set, batch_size=bs, shuffle=True)
+        self.val_loader = torch.utils.data.DataLoader(self.val_set, batch_size=bs, shuffle=True)
+        return
 
 
-def vae_loss(mu, logvar, pred, gt):
-    bs = gt.shape[0]
-    kl_loss = - 0.5*(1 + logvar - mu.pow(2) - logvar.exp()).sum(dim=1).mean()
-    recon_loss_l2 = mse(pred.reshape((bs, -1)), gt.reshape((bs, -1)))
-    return kl_loss, recon_loss_l2
+if __name__ == "__main__":
 
+    seed_everything()
 
-def loss_function(x_out, x, x_gray):
-    bs = x.shape[0]
-    mi_ch_a_g = mutual_info(x_out[:, 0].reshape(bs, -1), x_gray.reshape(bs, -1))
-    mi_ch_b_g = mutual_info(x_out[:, 1].reshape(bs, -1), x_gray.reshape(bs, -1))
-    return 1/mi_ch_a_g + 1/mi_ch_b_g
+    parser = argparse.ArgumentParser(description="colorization")
+    parser.add_argument("--d", type=str, default="cpu", help="select device (default cpu)")
+    parser.add_argument("--e", type=int, default=2, help="epochs (default 2)")
+    parser.add_argument("--bs", type=int, default=100, help="batch size (default 20)")
+    parser.add_argument("--lr_vae", type=float, default=2e-4, help="learning rate (default 2e-4)")
+    parser.add_argument("--lr_mdn", type=float, default=2e-4, help="learning rate (default 2e-4)")
+    parser.add_argument("--pre", action="store_true", help="load pretrained model  (default False)")
+    args = parser.parse_args()
+    device = args.d
+    print(args)
+    print(device)
 
+    lab_dataset = LABDataset()
+    lab_dataset.load_data()
+    lab_dataset.make_dataset()
+    lab_dataset.make_dataloader(args.bs)
 
-parser = argparse.ArgumentParser(description="colorization")
-parser.add_argument("--d", type=str, default="cpu", help="select device (default cpu)")
-parser.add_argument("--debug", action="store_true", help="select ot debugging state  (default False)")
-parser.add_argument("--e", type=int, default=2, help="epochs (default 2)")
-parser.add_argument("--bs", type=int, default=20, help="batch size (default 20)")
-parser.add_argument("--lr", type=float, default=2e-4, help="learning rate (default 2e-4)")
-parser.add_argument("--pre", action="store_true", help="load pretrained model  (default False)")
+    mse = torch.nn.MSELoss(reduction="none").to(device)
+    mutual_information = MutualInformation()
 
-args = parser.parse_args()
-device = args.d
-print(args)
-print(device)
+    autoencoder = AutoEncoder(args.d, args.pre)
 
-seed_everything()
-
-make_folder()
-
-train_lab = torch.tensor(np.load("../datasets/cifar10/train_lab.npy"), device="cpu")
-test_lab = torch.tensor(np.load("../datasets/cifar10/test_lab.npy"), device="cpu")
-val_lab = torch.tensor(np.load("../datasets/cifar10/val_lab.npy"), device="cpu")
-
-transform = torchvision.transforms.Compose([ToType(torch.float), Normalize()])
-antitransform = torchvision.transforms.Compose([UnNormalize(), ToType(torch.int8)])
-
-train_lab_set = torch.utils.data.TensorDataset(train_lab)
-test_lab_set = torch.utils.data.TensorDataset(test_lab)
-val_lab_set = torch.utils.data.TensorDataset(val_lab)
-
-trainloader = torch.utils.data.DataLoader(train_lab_set, batch_size=args.bs, shuffle=True)
-testloader = torch.utils.data.DataLoader(test_lab_set, batch_size=args.bs, shuffle=True)
-valloader = torch.utils.data.DataLoader(val_lab_set, batch_size=args.bs, shuffle=True)
-
-if args.debug:
-    vae = VAE(1, device)
-else:
-    vae = VAE(16, device)
-    vae.load_state_dict(torch.load("models/vae_mi_cifar10.pth")) if args.pre else 0
-
-vae.to(device)
-
-h, w = val_lab.shape[0], val_lab.shape[1]
-wd = 0.
-dpi = 400
-
-print(count_parameters(vae))
-optimizer = torch.optim.Adam(vae.parameters(), lr=args.lr, weight_decay=wd)
-bce = torch.nn.BCELoss().to(device)
-mse = torch.nn.MSELoss().to(device)
-mutual_info = MutualInformation(2, 1.01, True, True).to(device)
-lam = 1
-
-losses = np.zeros((args.e, 2))
-best_loss = np.inf
-for epoch in range(args.e):
-    vae.train()
-    train_loss_vae = 0
-    for idx, (batch) in tqdm(enumerate(trainloader)):
-        cl, cab = transform(batch[0])
-        cl = cl.to(device)
-        cab = cab.to(device)
-        optimizer.zero_grad()
-        mu, logvar, color_out = vae(cab, cl)
-        #mi_loss = loss_function(color_out, cab, cl)
-        kl_loss, recon_loss_l2 = vae_loss(mu_c, logvar_c, color_out, cab)
-        loss_vae = kl_loss + recon_loss_l2# + lam * mi_loss
-        loss_vae.backward()
-        optimizer.step()
-        train_loss_vae += loss_vae.item()
-    train_loss_vae /= (idx + 1)
-    vae.eval()
-    test_loss_vae = 0
-    with torch.no_grad():
-        for idx, (batch) in tqdm(enumerate(testloader)):
-            cl, cab = transform(batch[0])
-            mu, logvar, color_out = vae(cab, cl)
-            #mi_loss = loss_function(color_out, cab, cl)
-            kl_loss, recon_loss_l2 = vae_loss(mu_c, logvar_c, color_out, cab)
-            loss_vae = kl_loss + recon_loss_l2# + lam * mi_loss
-            test_loss_vae += loss_vae.item()
-    test_loss_vae /= (idx + 1)
-    print("Epoch {} vae train loss {:.3f} test loss {:.3f}".format(epoch, train_loss_vae, test_loss_vae))
-    if test_loss_vae < best_loss:
-        torch.save(vae.state_dict(), "models/vae_mi_cifar10.pth")
-        best_loss = test_loss_vae
-        print("saving")
-    losses[epoch] = [train_loss_vae, test_loss_vae]
-
-plt.clf()
-plt.plot(losses[1:, 0], color="navy", label="train")
-plt.plot(losses[1:, 1], color="red", label="test")
-plt.legend()
-plt.xlabel("epochs")
-plt.ylabel("vae loss")
-plt.savefig("figures/train_curve", dpi=dpi)
-
-UN = UnNormalize()
-
-vae.load_state_dict(torch.load("models/vae_mi_cifar10.pth"))
-n = 10
-l = 5
-selected = np.random.choice(test_lab.shape[0], size=n, replace=False)
-vae.eval()
-img_lab = torch.zeros((n, 3, h, w), dtype=torch.float, device=device)
-img_gt_rgb = np.load("../datasets/cifar10/test.npy")[selected]
-with torch.no_grad():
-    cl, cab = transform(test_lab[selected])
-    _, _, ab = vae(cab, cl)
-    img_lab[:, 1:] = ab
-    img_lab[:, 0] = cl.squeeze()
-    img_lab = UN(img_lab)
-    img_rgb = lab2rgb(img_lab)
-    nrows = int(n / 2)
-    ncols = 4
-    plt.clf()
-    fig, row = plt.subplots(nrows=nrows, ncols=ncols, figsize=(l, l))
-    for i, row in enumerate(row):
-        row[0].imshow(np.transpose(img_gt_rgb[i], (1, 2, 0)))
-        row[1].imshow(np.transpose(img_rgb[i], (1, 2, 0)))
-        row[2].imshow(np.transpose(img_gt_rgb[i + nrows], (1, 2, 0)))
-        row[3].imshow(np.transpose(img_rgb[i + nrows], (1, 2, 0)))
-        row[0].set_title("ground truth") if i == 0 else 0
-        row[1].set_title("colorized") if i == 0 else 0
-        row[2].set_title("ground truth") if i == 0 else 0
-        row[3].set_title("colorized") if i == 0 else 0
-        row[0].axis("off")
-        row[1].axis("off")
-        row[2].axis("off")
-        row[3].axis("off")
-    plt.tight_layout()
-    plt.savefig("figures/images", dpi=dpi)
+    autoencoder.fit_ae(lab_dataset.train_loader, lab_dataset.val_loader, epochs=args.e, lr=args.lr_vae, wd=0.)
