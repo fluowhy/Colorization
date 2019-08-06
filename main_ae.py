@@ -160,8 +160,7 @@ if __name__ == "__main__":
     parser.add_argument("--d", type=str, default="cpu", help="select device (default cpu)")
     parser.add_argument("--e", type=int, default=2, help="epochs (default 2)")
     parser.add_argument("--bs", type=int, default=100, help="batch size (default 20)")
-    parser.add_argument("--lr_vae", type=float, default=2e-4, help="learning rate (default 2e-4)")
-    parser.add_argument("--lr_mdn", type=float, default=2e-4, help="learning rate (default 2e-4)")
+    parser.add_argument("--lr", type=float, default=2e-4, help="learning rate (default 2e-4)")
     parser.add_argument("--pre", action="store_true", help="load pretrained model  (default False)")
     args = parser.parse_args()
     device = args.d
