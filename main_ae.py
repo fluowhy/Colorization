@@ -6,9 +6,8 @@ from utils import *
 
 
 def ae_loss(pred, gt, weights):
-    l2_loss = mse(pred, gt).sum(1) # .sum(-1).sum(-1).mean()
-    w_l2_loss = (l2_loss / weights).sum(-1).sum(-1).mean()
-    return w_l2_loss
+    l2_loss = mse(pred, gt).sum(-1).sum(-1).sum(-1).mean()
+    return l2_loss
 
 
 class AutoEncoder(object):
@@ -23,6 +22,7 @@ class AutoEncoder(object):
         self.unnormalize = UnNormalize(device)
         self.reg1 = 1e-2
         self.reg2 = 0.5
+        self.relu = torch.nn.ReLU()
         print(count_parameters(self.ae))
 
     def load_model(self):
@@ -74,7 +74,8 @@ class AutoEncoder(object):
         img = img.astype(np.float) / 255
         img = torch.tensor(img, dtype=torch.float, device=self.device).unsqueeze(0).unsqueeze(0)  # 1, 1, h, w
         with torch.no_grad():
-            ab_out = self.ae(img).view(1, 64, 1, 1)
+            ab_out = self.ae(img)
+            ab_out = torch.clamp(ab_out, - 1., 1.)
         lab_out = torch.cat((img, ab_out), dim=1)
         lab_out = self.unnormalize(lab_out).squeeze().cpu().numpy()
         lab_out = np.transpose(lab_out, (1, 2, 0)).astype(np.uint8)
@@ -96,6 +97,7 @@ class AutoEncoder(object):
         img = torch.tensor(img, dtype=torch.float, device=self.device).unsqueeze(1)
         with torch.no_grad():
             ab_out = self.ae(img)
+            ab_out = torch.clamp(ab_out, - 1., 1.)
         lab_out = torch.cat((img, ab_out), dim=1)
         lab_out = self.unnormalize(lab_out).cpu().numpy()
         lab_out = np.transpose(lab_out, (0, 2, 3, 1)).astype(np.uint8)
