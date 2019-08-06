@@ -28,33 +28,33 @@ def save_hyperparamters(names, values, savename):
 
 
 def numpy2torch(x, device, dtype):
-    return torch.tensor(x, device=device, dtype=dtype)
+	return torch.tensor(x, device=device, dtype=dtype)
 
 
 def rgb2bgr(x):
-    xbgr = np.zeros(x.shape, dtype=np.uint8)
-    xr = x[:, :, 0]
-    xg = x[:, :, 1]
-    xb = x[:, :, 2]
-    xbgr[:, :, 0] = xb
-    xbgr[:, :, 1] = xg
-    xbgr[:, :, 2] = xr
-    return xbgr
+	xbgr = np.zeros(x.shape, dtype=np.uint8)
+	xr = x[:, :, 0]
+	xg = x[:, :, 1]
+	xb = x[:, :, 2]
+	xbgr[:, :, 0] = xb
+	xbgr[:, :, 1] = xg
+	xbgr[:, :, 2] = xr
+	return xbgr
 
 
 def rgb2lab(x):
-    """
+	"""
 
-    Parameters
-    ----------
-    x : torch.tensor uint8 (N, c, h, w)
-        image to be transformed
-    Returns
-    -------
-     : numpy array int8 (N, c, h, w)
-        image in lab color space
-    """
-    return np.transpose(skimage.color.rgb2lab(x.transpose(1, 2).transpose(2, 3).numpy()).astype(np.int8), (0, 3, 1, 2))
+	Parameters
+	----------
+	x : torch.tensor uint8 (N, c, h, w)
+		image to be transformed
+	Returns
+	-------
+	 : numpy array int8 (N, c, h, w)
+		image in lab color space
+	"""
+	return np.transpose(skimage.color.rgb2lab(x.transpose(1, 2).transpose(2, 3).numpy()).astype(np.int8), (0, 3, 1, 2))
 
 
 def lab2rgb(x):
@@ -73,99 +73,6 @@ def lab2rgb(x):
 		x.cpu()
 		x[i] = torch.as_tensor(np.transpose(skimage.color.lab2rgb(np.transpose(x[i].cpu().numpy(), (1, 2, 0))), (2, 0, 1)))
 	return (x.cpu().numpy()*255.).astype(np.uint8)
-
-
-def save_or_not(test_loss, best_loss, model, savename):
-	if test_loss < best_loss:
-		print("Saving")
-		torch.save(model.state_dict(), "models/{}.pth".format(savename))
-		best_loss = test_loss
-	return best_loss
-
-
-def train(model, optimizer, dataloader, loss_function):
-	"""
-
-	Parameters
-	----------
-	model : CONVAE
-	optimizer : torch.optim
-	dataloader : DataLoader
-
-	Returns
-	-------
-	loss : float
-		One epoch train loss.
-	"""
-	model.train()
-	train_loss = 0
-	for idx, batch in enumerate(dataloader):
-		batch = batch[0]
-		bs = batch.shape[0]
-		cL = batch[:, 0]
-		cab = batch[:, 1:]
-		optimizer.zero_grad()
-		output, _ = model(cab)
-		loss = loss_function(output, cab)
-		loss.backward()
-		optimizer.step()
-		train_loss += loss.item()
-	train_loss /= (idx + 1)
-	return train_loss
-
-
-def eval(model, dataloader, loss_function):
-    """
-
-    Parameters
-    ----------
-    # TODO: add loss function to docstring
-    loss_fuobject : object
-    model : CONVAE
-        Model to be evaluated.
-    dataloader : DataLoader
-        Dataloader to be used.
-    Returns
-    -------
-    eval_loss : float
-        Evaluation loss.
-    """
-    model.eval()
-    eval_loss = 0
-    with torch.no_grad():
-        for idx, batch in enumerate(dataloader):
-            batch = batch[0]
-            bs = batch.shape[0]
-            cL = batch[:, 0]
-            cab = batch[:, 1:]
-            output, _ = model(cab)
-            loss = loss_function(output.reshape(bs, -1), cab.reshape(bs, -1))
-            eval_loss += loss.item()
-        eval_loss /= (idx + 1)
-    return eval_loss
-
-
-def print_epoch(epoch, trainloss, testloss, evalloss=None):
-	"""
-
-	Parameters
-	----------
-	epoch : int
-		Train epoch.
-	trainloss : float:
-		Train loss.
-	testloss : float
-		Test loss.
-	evalloss : float
-		Eval loss.
-
-	Returns
-	-------
-	None
-	"""
-	print("Epoch {} Train Loss {:.3f} Test Loss {:.3f}".format(epoch, trainloss, testloss)) if evalloss == None else print(
-		"Epoch {} Train Loss {:.3f} Eval Loss {:.3f} Test Loss {:.3f}".format(epoch, trainloss, evalloss, testloss))
-	return
 
 
 def count_parameters(model):
@@ -217,57 +124,6 @@ def plot_images(model, test_data, n, title="test"):
 	plt.savefig("figures/colorized_{}".format(title), dpi=400)
 	plt.show()
 	return
-
-
-def load_dataset(debug, N=10, device="cpu", name="cifar10"):
-	"""
-	load data from Cifar10.
-	Parameters
-	----------
-	N
-	all
-
-	Returns
-	-------
-	Torch tensors from train and test sets.
-	"""
-	if name == "stl10":
-		trainset = torchvision.datasets.STL10(root="../datasets/{}/train".format(name), split="train", download=True)
-		testset = torchvision.datasets.STL10(root="../datasets/{}/test".format(name), split="test", download=True)
-		unlabeledset = torchvision.datasets.STL10(root="../datasets/{}/unlabeled".format(name), split="unlabeled", download=True)
-		if not debug:
-			train_tensor = torch.tensor(trainset.data, dtype=torch.float, device="cpu") / 255
-			test_tensor = torch.tensor(testset.data, dtype=torch.float, device="cpu") / 255
-			unlabeled_tensor = torch.tensor(unlabeledset.data, dtype=torch.float, device="cpu") / 255
-		else:
-			train_tensor = torch.tensor(trainset.data[:N], dtype=torch.float, device="cpu") / 255.
-			test_tensor = torch.tensor(testset.data[:N], dtype=torch.float, device="cpu") / 255.
-			unlabeled_tensor = torch.tensor(unlabeledset.data[:N], dtype=torch.float, device="cpu") / 255
-		train_lab = colors.rgb_to_lab(train_tensor)
-		test_lab = colors.rgb_to_lab(test_tensor)
-		unlabeled_lab = colors.rgb_to_lab(unlabeled_tensor)
-		train_lab = normalize_lab(train_lab).to(device)
-		test_lab = normalize_lab(test_lab).to(device)
-		unlabeled_lab = normalize_lab(unlabeled_lab).to(device)
-		return train_lab, test_lab, unlabeled_lab
-	else:
-		trainset = torchvision.datasets.CIFAR10(root="../datasets/{}/train".format(name), train=True, download=True)
-		testset = torchvision.datasets.CIFAR10(root="../datasets/{}/test".format(name), train=False, download=True)
-		if not debug:
-			train_tensor = torch.tensor(trainset.data, dtype=torch.float, device="cpu") / 255
-			test_tensor = torch.tensor(testset.data, dtype=torch.float, device="cpu") / 255
-		else:
-			train_tensor = torch.tensor(trainset.data[:N], dtype=torch.float, device="cpu") / 255.
-			test_tensor = torch.tensor(testset.data[:N], dtype=torch.float, device="cpu") / 255.
-		train_tensor = train_tensor.transpose(1, -1)
-		train_tensor = train_tensor.transpose(-1, -2)
-		test_tensor = test_tensor.transpose(1, -1)
-		test_tensor = test_tensor.transpose(-1, -2)
-		train_lab = colors.rgb_to_lab(train_tensor)
-		test_lab = colors.rgb_to_lab(test_tensor)
-		train_lab = normalize_lab(train_lab).to(device)
-		test_lab = normalize_lab(test_lab).to(device)
-		return train_lab, test_lab, 0
 
 
 def unnormalize_and_lab_2_rgb(x):
@@ -350,7 +206,7 @@ class AlphaEntropy(torch.nn.Module):
 
 
 class MutualInformation(torch.nn.Module):
-	def __init__(self, sigma_zero, alpha=1.01, normalize_scale=True, normalize_dimension=True):
+	def __init__(self, sigma_zero=2, alpha=1.01, normalize_scale=True, normalize_dimension=True):
 		super(MutualInformation, self).__init__()
 		self.sigma_zero = sigma_zero
 		self.alpha = alpha

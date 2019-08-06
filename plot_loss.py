@@ -30,14 +30,10 @@ def plot_loss(path, savename, limits):
 
 
 if __name__ == "__main__":    
-    dpi = 500
-    losses = PlotLoss("files/losses.npy", "vae", [0, 10])
-    losses_vae_lab = PlotLoss("files/losses_vae_lab.npy", "vaegen", [0, 10])
-    losses_dec = PlotLoss("files/losses_dec.npy", "dec", [150, 175])
-    losses_mdn_divcolor = PlotLoss("files/losses_mdn_divcolor.npy", "mdn_divcolor", [0, 0.002])
-    losses_vae_divcolor = PlotLoss("files/losses_vae_divcolor.npy", "vae_divcolor", [0, 0.01])
-    losses.plot()
-    losses_vae_lab.plot()
-    losses_dec.plot()
-    losses_mdn_divcolor.plot()
-    losses_vae_divcolor.plot()
+	dpi = 500
+	train_loss = np.load("files/ae_train_loss.npy")
+	val_loss = np.load("files/ae_val_loss.npy")
+	plt.clf()
+	plt.plot(train_loss, color="navy", label="train")
+	plt.plot(val_loss, color="red", label="val")
+	plt.savefig("figures/ae_loss", dpi=dpi)
