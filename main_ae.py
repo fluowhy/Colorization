@@ -176,4 +176,4 @@ if __name__ == "__main__":
 
     autoencoder = AutoEncoder(args.d, args.pre)
 
-    autoencoder.fit_ae(lab_dataset.train_loader, lab_dataset.val_loader, epochs=args.e, lr=args.lr_vae, wd=0.)
+    autoencoder.fit_ae(lab_dataset.train_loader, lab_dataset.val_loader, epochs=args.e, lr=args.lr, wd=0.)
