@@ -150,7 +150,7 @@ class AE(torch.nn.Module):
     def forward(self, lab):
         latent = self.encode(lab)
         lab_out = self.decode(latent)
-        return lab_out
+        return lab_out, latent
 
 
 def sanity_check(model, x, y, lr=2e-4, wd=0., epochs=20, device="cpu"):

@@ -5,7 +5,7 @@ from model import *
 from utils import *
 
 
-def ae_loss(pred, gt, weights):
+def ae_loss(pred, gt):
     l2_loss = mse(pred, gt).sum(-1).sum(-1).sum(-1).mean()
     return l2_loss
 
@@ -33,11 +33,10 @@ class AutoEncoder(object):
         self.ae.train()
         train_loss = 0
         for idx, batch in tqdm(enumerate(dataloader)):
-            img_lab, img_weights = batch
+            img_lab, _ = batch
             img_l, img_ab = self.transform_lab(img_lab)
-            img_weights = img_weights.to(self.device)
             pred = self.ae(img_l)
-            loss = ae_loss(pred, img_ab, img_weights)
+            loss = ae_loss(pred, img_ab)
             loss.backward()
             self.optimizer_ae.step()
             train_loss += loss.item()
@@ -49,11 +48,10 @@ class AutoEncoder(object):
         eval_loss = 0
         with torch.no_grad():
             for idx, batch in tqdm(enumerate(dataloader)):
-                img_lab, img_weights = batch
+                img_lab, _ = batch
                 img_l, img_ab = self.transform_lab(img_lab)
-                img_weights = img_weights.to(self.device)
                 pred = self.ae(img_l)
-                loss = ae_loss(pred, img_ab, img_weights)
+                loss = ae_loss(pred, img_ab)
                 eval_loss += loss.item()
         eval_loss /= (idx + 1)
         return eval_loss

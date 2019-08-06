@@ -10,14 +10,16 @@ def ae_loss(pred, gt):
     return l2_loss
 
 
-def mi_loss(pred, z):
-    mi_a = mutual_information(pred[:, 0].view(-1, 64 * 64), z.view(-))
-    mi_b = mutual_information(pred[:, 0].view(-1, 64 * 64), z.view(-))
-    
+def mi_loss(pred, latent):
+    mi_a = mutual_information(pred[:, 0].view(-1, 64 * 64), latent.view(-1, 2048))
+    mi_b = mutual_information(pred[:, 1].view(-1, 64 * 64), latent.view(-1, 2048))
+    mi = 1 / (mi_a + mi_b + 1e-5)
+    return mi
 
 
 class AutoEncoder(object):
     def __init__(self, device, pre=False):
+        self.model_name = "ae_mi"
         self.device = device
         self.ae = AE()
         self.ae.to(device)
@@ -26,24 +28,25 @@ class AutoEncoder(object):
         self.transform_lab = torchvision.transforms.Compose([ToType(torch.float, device), Normalize(device)])
         self.transform_mdn = GreyTransform(torch.float, device)
         self.unnormalize = UnNormalize(device)
-        self.reg1 = 1e-2
+        self.reg1 = 1e0
         self.reg2 = 0.5
         self.relu = torch.nn.ReLU()
         print(count_parameters(self.ae))
 
     def load_model(self):
-        self.ae.load_state_dict(torch.load("models/ae.pth", map_location=self.device))
+        self.ae.load_state_dict(torch.load("models/{}.pth".format(self.model_name), map_location=self.device))
         return
 
     def train_ae(self, dataloader):
         self.ae.train()
         train_loss = 0
         for idx, batch in tqdm(enumerate(dataloader)):
-            img_lab, img_weights = batch
+            img_lab, _ = batch
             img_l, img_ab = self.transform_lab(img_lab)
-            img_weights = img_weights.to(self.device)
-            pred = self.ae(img_l)
-            loss = ae_loss(pred, img_ab, img_weights)
+            pred, latent = self.ae(img_l)
+            loss_ae = ae_loss(pred, img_ab)
+            loss_mi = mi_loss(pred, latent)
+            loss = loss_ae + loss_mi
             loss.backward()
             self.optimizer_ae.step()
             train_loss += loss.item()
@@ -55,11 +58,12 @@ class AutoEncoder(object):
         eval_loss = 0
         with torch.no_grad():
             for idx, batch in tqdm(enumerate(dataloader)):
-                img_lab, img_weights = batch
+                img_lab, _ = batch
                 img_l, img_ab = self.transform_lab(img_lab)
-                img_weights = img_weights.to(self.device)
-                pred = self.ae(img_l)
-                loss = ae_loss(pred, img_ab, img_weights)
+                pred, latent = self.ae(img_l)
+                loss_ae = ae_loss(pred, img_ab)
+                loss_mi = mi_loss(pred, latent)
+                loss = loss_ae + loss_mi
                 eval_loss += loss.item()
         eval_loss /= (idx + 1)
         return eval_loss
@@ -110,7 +114,7 @@ class AutoEncoder(object):
         for i in range(n):
             color_out = cv2.cvtColor(lab_out[i], cv2.COLOR_LAB2BGR)
             color_out = cv2.resize(color_out, (96, 96), interpolation=cv2.INTER_AREA)
-            cv2.imwrite("../datasets/stl10/divcolor/ae_{}.png".format(str(i)), color_out)
+            cv2.imwrite("../datasets/stl10/divcolor/{}_{}.png".format(self.model_name, str(i)), color_out)
         return
 
     def fit_ae(self, train_loader, val_loader, epochs=2, lr=2e-4, wd=0.):
@@ -122,13 +126,13 @@ class AutoEncoder(object):
             val_loss = self.eval_ae(val_loader)
             print("Epoch {} train loss {:.4f} val loss {:.4f}".format(epoch, train_loss, val_loss))
             if val_loss < self.best_loss_ae:
-                print("Saving ae")
-                torch.save(self.ae.state_dict(), "models/ae.pth")
+                print("Saving")
+                torch.save(self.ae.state_dict(), "models/{}.pth".format(self.model_name))
                 self.best_loss_ae = val_loss
             self.train_loss.append(train_loss)
             self.val_loss.append(val_loss)
-            np.save("files/ae_train_loss", self.train_loss)
-            np.save("files/ae_val_loss", self.val_loss)
+            np.save("files/{}_train_loss".format(self.model_name), self.train_loss)
+            np.save("files/{}_val_loss".format(self.model_name), self.val_loss)
         return
 
 
@@ -166,8 +170,7 @@ if __name__ == "__main__":
     parser.add_argument("--d", type=str, default="cpu", help="select device (default cpu)")
     parser.add_argument("--e", type=int, default=2, help="epochs (default 2)")
     parser.add_argument("--bs", type=int, default=100, help="batch size (default 20)")
-    parser.add_argument("--lr_vae", type=float, default=2e-4, help="learning rate (default 2e-4)")
-    parser.add_argument("--lr_mdn", type=float, default=2e-4, help="learning rate (default 2e-4)")
+    parser.add_argument("--lr", type=float, default=2e-4, help="learning rate (default 2e-4)")
     parser.add_argument("--pre", action="store_true", help="load pretrained model  (default False)")
     args = parser.parse_args()
     device = args.d
@@ -180,8 +183,8 @@ if __name__ == "__main__":
     lab_dataset.make_dataloader(args.bs)
 
     mse = torch.nn.MSELoss(reduction="none").to(device)
-    mutual_information = MutualInformation()
+    mutual_information = MutualInformation(normalize_scale=False, normalize_dimension=False)
 
     autoencoder = AutoEncoder(args.d, args.pre)
 
-    autoencoder.fit_ae(lab_dataset.train_loader, lab_dataset.val_loader, epochs=args.e, lr=args.lr_vae, wd=0.)
+    autoencoder.fit_ae(lab_dataset.train_loader, lab_dataset.val_loader, epochs=args.e, lr=args.lr, wd=0.)
