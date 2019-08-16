@@ -45,7 +45,7 @@ class AutoEncoder(object):
             img_l, img_ab = self.transform_lab(img_lab)
             pred, latent = self.ae(img_l)
             loss_ae = ae_loss(pred, img_ab)
-            loss_mi = mi_loss(pred, latent)
+            loss_mi = mi_loss(img_ab, latent)
             loss = loss_ae + loss_mi
             loss.backward()
             self.optimizer_ae.step()
@@ -62,7 +62,7 @@ class AutoEncoder(object):
                 img_l, img_ab = self.transform_lab(img_lab)
                 pred, latent = self.ae(img_l)
                 loss_ae = ae_loss(pred, img_ab)
-                loss_mi = mi_loss(pred, latent)
+                loss_mi = mi_loss(img_ab, latent)
                 loss = loss_ae + loss_mi
                 eval_loss += loss.item()
         eval_loss /= (idx + 1)
