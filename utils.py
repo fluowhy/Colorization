@@ -10,7 +10,7 @@ from im import *
 
 
 def read_hyperparameters(savename):
-	params_df = pd.read_csv("{}.csv".format(savename))
+	params_df = pd.read_csv(savename)
 	names = params_df.columns
 	params = {}
 	for name in names:

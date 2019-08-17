@@ -14,7 +14,8 @@ def vae_loss(mu, logvar, pred, gt, weights):
 
 
 def mdn_loss(mu, z, logvar):
-    l2_loss = 0.5 * (mse(mu, z) / (logvar.exp() + 1e-10)).sum(-1).mean()
+    eps = 1e-10
+    l2_loss = 0.5 * (mse(mu, z) / (logvar.exp() + eps)).sum(-1).mean()
     return l2_loss
 
 
