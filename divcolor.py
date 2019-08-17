@@ -432,7 +432,7 @@ class VAEMod(nn.Module):
         x = self.dec_conv6(self.upsample6(x))
         return x
 
-    def forward(self, color, greylevel):
+    def forward(self, color):
         mu, logvar = self.encode(color)
         stddev = torch.sqrt(torch.exp(logvar))
         sample = torch.randn(stddev.shape, device=stddev.device)
