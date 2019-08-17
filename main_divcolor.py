@@ -14,7 +14,7 @@ def vae_loss(mu, logvar, pred, gt, weights):
 
 
 def mdn_loss(mu, z, logvar):
-    l2_loss = 0.5 * (mse(mu, z) / logvar.exp()).sum(-1).mean()
+    l2_loss = 0.5 * (mse(mu, z) / (logvar.exp() + 1e-10)).sum(-1).mean()
     return l2_loss
 
 
@@ -192,7 +192,6 @@ class DivColor(object):
             self.vae_val_loss.append([total_val_loss, l2_val_loss, w_l2_val_loss, kl_val_loss])
             np.save("files/divcolor_vae_train_loss", self.vae_train_loss)
             np.save("files/divcolor_vae_val_loss", self.vae_val_loss)
-
         return
 
     def fit_mdn(self, train_loader, val_loader, epochs=2, lr=2e-4, wd=0.):

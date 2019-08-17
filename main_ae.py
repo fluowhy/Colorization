@@ -72,7 +72,7 @@ class AutoEncoder(object):
         img = img.astype(np.float) / 255
         img = torch.tensor(img, dtype=torch.float, device=self.device).unsqueeze(0).unsqueeze(0)  # 1, 1, h, w
         with torch.no_grad():
-            ab_out = self.ae(img)
+            ab_out, _ = self.ae(img)
             ab_out = torch.clamp(ab_out, - 1., 1.)
         lab_out = torch.cat((img, ab_out), dim=1)
         lab_out = self.unnormalize(lab_out).squeeze().cpu().numpy()
@@ -94,7 +94,7 @@ class AutoEncoder(object):
         img = img.astype(np.float32) / 255
         img = torch.tensor(img, dtype=torch.float, device=self.device).unsqueeze(1)
         with torch.no_grad():
-            ab_out = self.ae(img)
+            ab_out, _ = self.ae(img)
             ab_out = torch.clamp(ab_out, - 1., 1.)
         lab_out = torch.cat((img, ab_out), dim=1)
         lab_out = self.unnormalize(lab_out).cpu().numpy()

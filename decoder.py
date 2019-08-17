@@ -1,4 +1,5 @@
 import torch
+from utils import *
 
 
 class DEC(torch.nn.Module):
@@ -61,3 +62,8 @@ class AE(torch.nn.Module):
         h = self.encoder(x)
         out = self.decoder(h)
         return out
+
+
+if __name__ == "__main__":
+	dec = DEC(out_ch=2, in_ch=1, nf=2, nlayers=18, ks=5)
+	print(count_parameters(dec) * 1e-6)

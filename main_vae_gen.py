@@ -3,7 +3,6 @@ import argparse
 
 from utils import *
 from vae import *
-from mdn import *
 
 
 def vae_loss(mu, logvar, pred, gt):
@@ -29,6 +28,12 @@ print(device)
 seed_everything()
 
 make_folder()
+
+vae = VAELAB(in_ab=2, in_l=1, nf=args.nf, ld=args.ld, ks=3, do=0.7)  # 64, 128
+vae.load_state_dict(torch.load("models/vae_lab.pth", map_location=args.d)) if args.pre else 0
+vae.to(device)
+
+print(count_parameters(vae))
 
 train_lab = torch.tensor(np.load("../datasets/stl10/train_lab_1.npy"))
 test_lab = torch.tensor(np.load("../datasets/stl10/test_lab.npy"))
