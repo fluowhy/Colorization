@@ -141,7 +141,7 @@ class DivColor(object):
         img = torch.tensor(img, dtype=torch.float, device=self.device).unsqueeze(0).unsqueeze(0)  # 1, 1, h, w
         with torch.no_grad():
             z = self.mdn(img)
-            ab_out = self.vae.decoder(z)
+            ab_out = self.vae.decode(z)
         lab_out = torch.cat((img, ab_out), dim=1)
         lab_out = self.unnormalize(lab_out).squeeze().cpu().numpy()
         lab_out = np.transpose(lab_out, (1, 2, 0)).astype(np.uint8)
@@ -164,7 +164,7 @@ class DivColor(object):
         img = torch.tensor(img, dtype=torch.float, device=self.device).unsqueeze(1)
         with torch.no_grad():
             z = self.mdn(img)
-            ab_out = self.vae.decoder(z)
+            ab_out = self.vae.decode(z)
         lab_out = torch.cat((img, ab_out), dim=1)
         lab_out = self.unnormalize(lab_out).cpu().numpy()
         lab_out = np.transpose(lab_out, (0, 2, 3, 1)).astype(np.uint8)
@@ -222,7 +222,7 @@ class DivColor(object):
             for idx, batch in tqdm(enumerate(data_loader)):
                 img_lab, _ = batch
                 img_l, img_ab = self.transform_lab(img_lab)
-                mu, logvar = self.vae.encoder(img_ab)
+                mu, logvar = self.vae.encode(img_ab)
                 mu = mu.squeeze().cpu().numpy()
                 logvar = logvar.squeeze().cpu().numpy()
                 latent_mu = np.vstack((latent_mu, mu))
