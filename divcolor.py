@@ -382,7 +382,7 @@ class VAEMod(nn.Module):
         self.tanh = torch.nn.Tanh()
         self.relu = torch.nn.ReLU()
 
-        self.enc_conv1 = torch.nn.Conv2d(1, self.nf, 3, stride=2, padding=1)
+        self.enc_conv1 = torch.nn.Conv2d(2, self.nf, 3, stride=2, padding=1)
         self.enc_bn1 = torch.nn.BatchNorm2d(self.nf)
         self.enc_conv2 = torch.nn.Conv2d(self.nf, self.nf * 2, 3, stride=2, padding=1)
         self.enc_bn2 = torch.nn.BatchNorm2d(self.nf * 2)
